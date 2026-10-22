@@ -1,12 +1,13 @@
--- ruxchipher LEFT: greeting + tip, mission tracker, weather + calendar.
--- The gap between the greeting and the panels leaves the wallpaper's Arch logo visible.
+-- ruxchipher LEFT: greeting + tip, then (below the wallpaper's Arch logo) a compact mission
+-- panel with weather + calendar stacked under it.
 local DIR = os.getenv('HOME') .. '/.config/conky/ruxchipher/'
 local U = dofile(DIR .. 'common.lua')
 local col, text, rgba = U.col, U.text, U.rgba
 
-local PW, PH = 360, 400        -- panel size
-local PY = 372                 -- panel top (below the Arch logo)
-local MX, WX = 0, 376          -- mission / weather panel x
+-- Single column under the wallpaper's Arch logo: compact mission panel, weather + calendar below it.
+local PW = 360                 -- panel width (matches the HUD on the right)
+local MY, MH = 324, 262        -- mission panel top / height
+local WY, WH = MY + MH + 14, 350   -- weather panel top / height (the wx widget draws its icon at WY + 90)
 
 ---------------------------------------------------------------- content
 
@@ -143,95 +144,85 @@ local function draw_greeting(cr)
     end
 
     local tip = TIPS[(os.time() // 900) % #TIPS + 1]
-    local lines = U.wrap(cr, tip, 13, 560)
-    local top = 148
+    local lines = U.wrap(cr, tip, 12, 330)          -- wrap to the widget column width
+    local top = 146
     rgba(cr, col.purple, 0.8)
-    U.rrect(cr, 12, top, 2, #lines * 20 + 6, 1)
+    U.rrect(cr, 12, top, 2, #lines * 18 + 6, 1)
     cairo_fill(cr)
     for i, l in ipairs(lines) do
-        text(cr, l, 26, top + 2 + i * 20 - 4, 13, col.sub, { shadow = true })
+        text(cr, l, 26, top + i * 18, 12, col.sub, { shadow = true })
     end
 end
 
 local function draw_mission(cr)
-    local x, y = MX, PY
-    U.panel(cr, x, y, PW, PH)
-    U.header(cr, x + 20, y + 30, PW, 'MISSION', mission.goal)
+    local x, y = 0, MY
+    U.panel(cr, x, y, PW, MH)
+    U.header(cr, x + 20, y + 28, PW, 'MISSION', mission.goal)
 
     -- countdown
     local left = days_left()
-    local nw = text(cr, tostring(left), x + 20, y + 92, 48, col.fg, {
-        bold = true, pattern = U.grad(x + 20, 0, x + 140, 0, col.cyan, col.purple),
+    local nw = text(cr, tostring(left), x + 20, y + 74, 36, col.fg, {
+        bold = true, pattern = U.grad(x + 20, 0, x + 110, 0, col.cyan, col.purple),
     })
-    text(cr, 'days', x + 28 + nw, y + 72, 12, col.sub)
-    text(cr, 'until ' .. mission.deadline:sub(1, 4), x + 28 + nw, y + 90, 12, col.muted)
+    text(cr, 'days', x + 28 + nw, y + 58, 11, col.sub)
+    text(cr, 'until ' .. mission.deadline:sub(1, 4), x + 28 + nw, y + 74, 11, col.muted)
 
-    -- streak badge
+    -- streak + study today
     local s = streak()
     local sc = s > 0 and col.orange or col.muted
-    text(cr, '\u{F0238}', x + PW - 20, y + 74, 22, sc, { align = 'right' })
-    text(cr, s .. ' day streak', x + PW - 20, y + 94, 11, sc, { align = 'right' })
+    local sw = text(cr, s .. ' day streak', x + PW - 20, y + 58, 11, sc, { align = 'right' })
+    text(cr, '\u{F0238}', x + PW - 26 - sw, y + 59, 14, sc, { align = 'right' })
+    local mins = study[day_key(0)] or 0
+    if focus then mins = mins + (os.time() - focus.start) // 60 end
+    text(cr, string.format('study today %dh %02dm', mins // 60, mins % 60), x + PW - 20, y + 74, 10,
+        mins > 0 and col.cyan or col.muted, { align = 'right' })
 
     -- objectives
     local done = 0
     for _, it in ipairs(mission.items) do if it.done then done = done + 1 end end
     local total = math.max(#mission.items, 1)
-    text(cr, 'objectives', x + 20, y + 126, 11, col.muted)
-    text(cr, done .. '/' .. #mission.items, x + PW - 20, y + 126, 11, col.fg, { align = 'right', bold = true })
-    U.bar(cr, x + 20, y + 134, PW - 40, 5, done / total * 100, col.cyan, col.purple)
+    text(cr, 'objectives', x + 20, y + 100, 10, col.muted)
+    text(cr, done .. '/' .. #mission.items, x + PW - 20, y + 100, 10, col.fg, { align = 'right', bold = true })
+    U.bar(cr, x + 20, y + 107, PW - 40, 4, done / total * 100, col.cyan, col.purple)
 
     local next_marked = false
     for i = 1, math.min(6, #mission.items) do
         local it = mission.items[i]
-        local ry = y + 164 + (i - 1) * 24
+        local ry = y + 132 + (i - 1) * 19
         if it.done then
-            text(cr, '\u{F0135}', x + 20, ry, 14, col.green)
-            text(cr, it.label, x + 42, ry - 1, 12, col.muted)
+            text(cr, '\u{F0135}', x + 20, ry, 12, col.green)
+            text(cr, it.label, x + 40, ry - 1, 11, col.muted)
         else
             local first = not next_marked
             next_marked = true
-            text(cr, first and '\u{F0142}' or '\u{F0131}', x + 20, ry, 14, first and col.cyan or col.muted)
-            text(cr, it.label, x + 42, ry - 1, 12, first and col.fg or col.sub, { bold = first })
+            text(cr, first and '\u{F0142}' or '\u{F0131}', x + 20, ry, 12, first and col.cyan or col.muted)
+            text(cr, it.label, x + 40, ry - 1, 11, first and col.fg or col.sub, { bold = first })
         end
     end
 
-    -- commit heatmap: last 28 days, oldest left
-    local hy = y + 322
-    text(cr, 'lab commits + study · 28 days', x + 20, hy, 10, col.muted)
-    local mins = study[day_key(0)] or 0
-    if focus then mins = mins + (os.time() - focus.start) // 60 end
-    text(cr, string.format('study today %dh %02dm', mins // 60, mins % 60), x + PW - 20, hy, 10,
-        mins > 0 and col.cyan or col.muted, { align = 'right' })
-    local gap, ch = 4, 12
-    local cw = (PW - 40 + gap) / 14
+    -- lab commits + study, last 28 days in one strip (oldest left)
+    local gap = 2
+    local cw = (PW - 40 + gap) / 28
     for i = 0, 27 do
         local dk = day_key(27 - i)
         local n = (commits[dk] or 0) + math.ceil((study[dk] or 0) / 30)
-        local cx = x + 20 + (i % 14) * cw
-        local cy = hy + 10 + (i // 14) * (ch + gap)
-        U.rrect(cr, cx, cy, cw - gap, ch, 3)
+        U.rrect(cr, x + 20 + i * cw, y + MH - 26, cw - gap, 9, 2.5)
         if n == 0 then rgba(cr, col.track)
-        else
-            local a = math.min(1, 0.35 + n * 0.2)
-            rgba(cr, i % 2 == 0 and col.cyan or col.purple, a)
-        end
+        else rgba(cr, i % 2 == 0 and col.cyan or col.purple, math.min(1, 0.35 + n * 0.2)) end
         cairo_fill(cr)
     end
 end
 
 local function draw_weather(cr)
-    local x, y = WX, PY
-    U.panel(cr, x, y, PW, PH)
-    U.header(cr, x + 20, y + 30, PW, 'WEATHER', weather.city or 'Sydney')
+    local x, y = 0, WY
+    U.panel(cr, x, y, PW, WH)
+    U.header(cr, x + 20, y + 28, PW, 'WEATHER', weather.city or 'Sydney')
 
     if weather.temp then
-        local h = tonumber(os.date('%H'))
-        local icon, ic = weather_icon(weather.code, h < 6 or h >= 19)
-        -- the big icon itself is drawn (and animated) by the separate wx widget
-        local _ = icon
-        local tw = text(cr, weather.temp .. '°', x + 96, y + 92, 44, col.fg, { bold = true })
-        text(cr, weather.desc or '', x + 100 + tw, y + 74, 12, col.sub)
-        text(cr, 'feels ' .. (weather.feels or '?') .. '°  ·  ' .. (weather.humidity or '?') .. '%', x + 100 + tw, y + 92, 11, col.muted)
+        -- the big icon is drawn (and animated) by the separate wx widget at (x + 20, y + 90)
+        local tw = text(cr, weather.temp .. '°', x + 90, y + 84, 38, col.fg, { bold = true })
+        text(cr, weather.desc or '', x + 96 + tw, y + 68, 11, col.sub)
+        text(cr, 'feels ' .. (weather.feels or '?') .. '°  ·  ' .. (weather.humidity or '?') .. '%', x + 96 + tw, y + 84, 10, col.muted)
 
         -- 3-day forecast
         local fw = (PW - 40 - 16) / 3
@@ -242,33 +233,32 @@ local function draw_weather(cr)
                 local yy, mm, dd = date:match('(%d+)-(%d+)-(%d+)')
                 local label = i == 0 and 'Today' or os.date('%a', os.time({ year = yy, month = mm, day = dd, hour = 12 }))
                 local fx = x + 20 + i * (fw + 8)
-                U.rrect(cr, fx, y + 116, fw, 52, 10)
+                U.rrect(cr, fx, y + 104, fw, 46, 10)
                 rgba(cr, col.tile)
                 cairo_fill(cr)
                 local fi, fc = weather_icon(code)
-                text(cr, fi, fx + 10, y + 148, 18, fc)
-                text(cr, label, fx + fw - 10, y + 136, 10, col.muted, { align = 'right' })
-                text(cr, hi .. '° ' .. lo .. '°', fx + fw - 10, y + 155, 11, col.fg, { align = 'right' })
+                text(cr, fi, fx + 10, y + 134, 16, fc)
+                text(cr, label, fx + fw - 10, y + 122, 10, col.muted, { align = 'right' })
+                text(cr, hi .. '° ' .. lo .. '°', fx + fw - 10, y + 140, 11, col.fg, { align = 'right' })
             end
         end
     else
-        text(cr, 'fetching weather…', x + 20, y + 90, 12, col.muted)
+        text(cr, 'fetching weather…', x + 20, y + 84, 12, col.muted)
     end
 
     -- calendar
-    local cy = y + 200
     U.with_pattern(cr, U.grad(x + 20, 0, x + PW - 20, 0, col.cyan, col.purple, 0.3), function()
         cairo_set_line_width(cr, 1)
-        cairo_move_to(cr, x + 20, cy - 12.5)
-        cairo_line_to(cr, x + PW - 20, cy - 12.5)
+        cairo_move_to(cr, x + 20, y + 166.5)
+        cairo_line_to(cr, x + PW - 20, y + 166.5)
         cairo_stroke(cr)
     end)
-    text(cr, os.date('%B %Y'), x + 20, cy + 8, 13, col.fg, { bold = true })
+    text(cr, os.date('%B %Y'), x + 20, y + 188, 12, col.fg, { bold = true })
 
     local cw = (PW - 40) / 7
     local names = { 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su' }
     for i, n in ipairs(names) do
-        text(cr, n, x + 20 + (i - 0.5) * cw, cy + 34, 10, i >= 6 and col.purple or col.muted, { align = 'center', bold = true })
+        text(cr, n, x + 20 + (i - 0.5) * cw, y + 210, 10, i >= 6 and col.purple or col.muted, { align = 'center', bold = true })
     end
 
     local now = os.date('*t')
@@ -278,17 +268,16 @@ local function draw_weather(cr)
     for d = 1, days do
         local slot = offset + d - 1
         local cx = x + 20 + (slot % 7 + 0.5) * cw
-        local ry = cy + 58 + (slot // 7) * 24
+        local ry = y + 234 + (slot // 7) * 20
         if d == now.day then
             U.with_pattern(cr, U.grad(cx - 13, 0, cx + 13, 0, col.cyan, col.purple), function()
-                U.rrect(cr, cx - 14, ry - 15, 28, 21, 7)
+                U.rrect(cr, cx - 13, ry - 14, 26, 19, 6)
                 cairo_fill(cr)
             end)
-            text(cr, tostring(d), cx, ry, 12, col.black, { align = 'center', bold = true, alpha = 0.85 })
+            text(cr, tostring(d), cx, ry, 11, col.black, { align = 'center', bold = true, alpha = 0.85 })
         else
-            local past = d < now.day
-            text(cr, tostring(d), cx, ry, 12, (slot % 7 >= 5) and col.purple or col.sub,
-                { align = 'center', alpha = past and 0.45 or 1 })
+            text(cr, tostring(d), cx, ry, 11, (slot % 7 >= 5) and col.purple or col.sub,
+                { align = 'center', alpha = d < now.day and 0.45 or 1 })
         end
     end
 end

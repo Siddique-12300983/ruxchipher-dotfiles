@@ -6,6 +6,8 @@ My Arch Linux workstation (GNOME on Wayland), customised into a security-aware d
 from the boot screen to the browser start page. Part of my path to a purple team internship.
 Portfolio: **[ruxchipher.com](https://ruxchipher.com)**
 
+![Full desktop](screenshots/desktop.png)
+
 > **New machine?** Follow **[GUIDE.md](GUIDE.md)**. It's two commands: `./install.sh --user`, then optionally `./install.sh --system`.
 
 | Main HUD | Left panels |
@@ -31,7 +33,7 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
   and a **sentinel strip** that pulses red for 10 minutes after an alert. Click it, or press **Super+Alt+S**, for today's alert report.
   The GPU is only queried when it's already awake, so the widget never wakes the dGPU.
 - **`lab.lua`** (bottom right): live status and CPU of the KVM lab VMs from `virsh domstats`.
-- **`left.lua`**: greeting with a rotating security tip, which becomes a **focus-mode countdown** during study sessions;
+- **`left.lua`** (left column, under the wallpaper's Arch logo): greeting with a rotating security tip, which becomes a **focus-mode countdown** during study sessions;
   a **mission tracker** (countdown, objectives from `mission.txt`, a streak and heatmap from lab commits plus study time);
   Sydney **weather** and a calendar.
 - **`wx.lua`**: the weather icon, **animated** (turning sun, falling rain, lightning, snow), but only for 6 seconds after a click

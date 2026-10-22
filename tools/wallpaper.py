@@ -4,6 +4,8 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 W, H = 3840, 2160                      # 2x the 1920x1080 screen
+LOGO_DY = -56                          # logo moved up 28 screen px to sit tighter under the greeting
+LOGO_DX = -286                         # and left 143 px so it's centred over the 360 px widget column
 SRC = sys.argv[1]                      # original geology.png (5120x2880) for the logo
 OUT = sys.argv[2]
 rng = np.random.default_rng(23)
@@ -75,7 +77,7 @@ src = Image.open(SRC).convert('L')
 sx = src.width / W                                 # 5120 -> 3840
 box = (440, 720, 1440, 1050)                       # logo area in the 5120x2880 original
 crop = src.crop(box).resize((round((box[2] - box[0]) / sx), round((box[3] - box[1]) / sx)), Image.LANCZOS)
-ox, oy = round(box[0] / sx), round(box[1] / sx)
+ox, oy = round(box[0] / sx) + LOGO_DX, round(box[1] / sx) + LOGO_DY
 mask = np.zeros((H, W), np.float32)
 m = np.asarray(crop, dtype=np.float32) / 255
 mask[oy:oy + m.shape[0], ox:ox + m.shape[1]] = m
