@@ -1,0 +1,15 @@
+#!/bin/sh
+# ruxchipher-greeter: greet once after login, then again every time the screen is unlocked.
+STATE="$HOME/.cache/ruxchipher/locked_at"
+mkdir -p "$(dirname "$STATE")"
+
+sleep 5
+ruxchipher-greet login &
+
+gdbus monitor --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver |
+while read -r line; do
+    case "$line" in
+        *ActiveChanged*true*)  date +%s > "$STATE" ;;
+        *ActiveChanged*false*) ruxchipher-greet unlock "$(cat "$STATE" 2>/dev/null || echo 0)" & ;;
+    esac
+done

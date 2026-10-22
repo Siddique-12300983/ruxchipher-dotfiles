@@ -1,0 +1,21 @@
+#!/bin/sh
+# ruxchipher-greet [login|unlock] [since_epoch]: show the welcome card for ~3 s.
+MODE=${1:-login}
+SINCE=${2:-0}
+LOG="$HOME/.local/state/ruxchipher-sentinel/events.log"
+OUT="$HOME/.cache/ruxchipher/greet.txt"
+CONF="$HOME/.config/conky/ruxchipher/greet.conf"
+mkdir -p "$(dirname "$OUT")"
+
+if [ "$MODE" = unlock ] && [ "$SINCE" -gt 0 ]; then
+    alerts=$(awk -v s="$SINCE" '{ t = $1 " " $2; gsub(/[-:]/, " ", t); if (mktime(t) >= s) n++ } END { print n + 0 }' "$LOG" 2>/dev/null)
+else
+    alerts=$(grep -c "^$(date +%F)" "$LOG" 2>/dev/null)
+fi
+lab=$(virsh -c qemu:///system list --name --state-running 2>/dev/null | grep -c .)
+deadline=$(sed -n 's/^deadline:[[:space:]]*//p' "$HOME/.config/conky/ruxchipher/mission.txt" 2>/dev/null)
+days=$(( ( $(date -d "${deadline:-2027-01-01}" +%s) - $(date +%s) + 86399 ) / 86400 ))
+
+printf 'mode=%s\nalerts=%s\nlab=%s\ndays=%s\n' "$MODE" "${alerts:-0}" "${lab:-0}" "$days" > "$OUT"
+pkill -f "^conky -c $CONF\$" 2>/dev/null
+exec conky -c "$CONF" >/dev/null 2>&1

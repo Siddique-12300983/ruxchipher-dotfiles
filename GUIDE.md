@@ -40,7 +40,7 @@ When it finishes, **log out and log back in**. You should see the widgets on the
 ```
 
 This adds:
-- the **boot splash** (shield logo, your name, boot log, a goodbye screen on shutdown);
+- the **boot splash** (your shield logo on the dimmed wallpaper);
 - the **login screen** logo and banner;
 - the **browser start page** for Chrome and Firefox;
 - the **lid-hibernate fix** (only if hibernation is already set up).
@@ -126,4 +126,5 @@ python -m venv /tmp/venv && /tmp/venv/bin/pip install numpy pillow
 /tmp/venv/bin/python tools/wallpaper.py ~/Pictures/Wallpapers/geology.png wallpaper.png   # needs the original Arch wallpaper for the logo
 /tmp/venv/bin/python tools/make_assets.py out/ wallpapers/ruxchipher-tokyonight.png
 ```
-Edit the text in `make_assets.py` (name, `CODENAME`, boot log lines) to personalise the boot splash.
+`make_assets.py` also renders text images (name, typed codename, boot log, goodbye) that the current minimal splash doesn't use;
+they're kept in case a slower-booting machine has time to show them.

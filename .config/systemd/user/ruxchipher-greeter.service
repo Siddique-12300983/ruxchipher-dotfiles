@@ -1,0 +1,13 @@
+[Unit]
+Description=ruxchipher greeter: welcome card after login and unlock
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/bin/ruxchipher-greeter
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

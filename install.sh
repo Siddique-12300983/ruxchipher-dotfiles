@@ -60,7 +60,7 @@ install_user() {
 
     c "Copying configs and scripts"
     (cd "$REPO" && find .config .local -type f) | while read -r f; do put "$REPO/$f" "$HOME/$f"; done
-    chmod +x "$HOME"/.local/bin/{ruxchipher-sentinel,lab-up,lab-down,focus-mode,sentinel-report} \
+    chmod +x "$HOME"/.local/bin/{ruxchipher-sentinel,lab-up,lab-down,focus-mode,sentinel-report,ruxchipher-greet,ruxchipher-greeter} \
              "$HOME/.config/conky/ruxchipher/art.sh"
 
     c "Building conky-clickable (lets the HUD and weather icon receive clicks)"
@@ -116,7 +116,7 @@ install_user() {
 
     c "Sentinel service"
     systemctl --user daemon-reload
-    systemctl --user enable --now ruxchipher-sentinel.service
+    systemctl --user enable --now ruxchipher-sentinel.service ruxchipher-greeter.service
 
     python3 -I "$HOME/.config/conky/ruxchipher/weather.py" || true
     c "User setup done. Log out and back in to load the widgets and extensions."
