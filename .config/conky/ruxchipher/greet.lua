@@ -1,4 +1,4 @@
--- ruxchipher GREET: welcome card after login/unlock (~3 s), or the full-screen goodbye before
+-- ruxchipher GREET: welcome card after login/unlock (~5.6 s), or the full-screen goodbye before
 -- logout/shutdown: the screen dims, the card fades in, then everything fades to black (~3.5 s).
 -- Status text comes from ~/.cache/ruxchipher/greet.txt, written by ~/.local/bin/ruxchipher-greet.
 local DIR = os.getenv('HOME') .. '/.config/conky/ruxchipher/'
@@ -11,7 +11,7 @@ local info = {}
 local raw = U.readf(os.getenv('HOME') .. '/.cache/ruxchipher/greet.txt') or ''
 for k, v in raw:gmatch('(%w+)=([^\n]*)') do info[k] = v end
 local bye = info.mode == 'bye'
-local FPS = bye and 30 or 20
+local FPS = 30
 
 local function ease(t)
     t = math.max(0, math.min(1, t))
@@ -90,9 +90,10 @@ function conky_greet()
             cairo_paint_with_alpha(cr, a)
         end
     else
-        local a = ease(t / 0.4) * (1 - ease((t - 2.6) / 0.4))
+        -- 0.8 s fade/slide in · ~4 s on screen · 0.8 s fade out
+        local a = ease(t / 0.8) * (1 - ease((t - 4.8) / 0.8))
         cairo_push_group(cr)
-        cairo_translate(cr, 0, (1 - ease(t / 0.4)) * 10)
+        cairo_translate(cr, 0, (1 - ease(t / 0.8)) * 14)
         card(cr)
         cairo_pop_group_to_source(cr)
         cairo_paint_with_alpha(cr, a)

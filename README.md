@@ -48,8 +48,8 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 - **`focus-mode`**: 50-minute study timer that mutes notifications and logs study time to the mission streak.
 
 ### Welcome card
-- **`ruxchipher-greeter`** (user service) + **`greet.lua`**: after login, and every time the screen is unlocked, a card fades in for
-  ~3 s with a greeting, sentinel alerts while you were away, lab status and days to 2027. It's an override window, so it never steals focus.
+- **`ruxchipher-greeter`** (user service) + **`greet.lua`**: after login, and every time the screen is unlocked, a card slides and fades in for
+  ~5 s (30 fps) with a greeting, sentinel alerts while you were away, lab status and days to 2027. It's an override window, so it never steals focus.
 - **Goodbye**: on logout, restart or power off, the screen dims, a "See you soon, Siddique." card fades in, then everything
   fades to black (~3.5 s) while the desktop is still up. The greeter registers as a **GNOME session client**: gnome-session waits
   for every client to answer `EndSession`, so it answers after the animation. (A logind delay inhibitor didn't work: GNOME tells
