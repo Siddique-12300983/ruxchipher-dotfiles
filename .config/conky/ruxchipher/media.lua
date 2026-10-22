@@ -6,6 +6,8 @@ local U = dofile(DIR .. 'common.lua')
 local col, text, rgba = U.col, U.text, U.rgba
 
 local W, H = 760, 180
+local TITLE_FONT = 'Space Grotesk Light Light'    -- big track title (Space Grotesk 300)
+local BODY_FONT = 'Space Grotesk Light Medium'    -- artist, label and times (Space Grotesk 500)
 local ART = 140
 local CACHE = os.getenv('HOME') .. '/.cache/ruxchipher/'
 
@@ -115,11 +117,12 @@ local function draw(cr)
     local tx = x0 + ART + 28
     eq(cr, tx, 46, tick, playing)
     text(cr, (playing and 'now playing' or 'paused') .. '  ·  ' .. (now.player or ''), tx + 22, 46, 11,
-        playing and col.cyan or col.muted, { alpha = 0.8, shadow = true })
+        playing and col.cyan or col.muted, { font = BODY_FONT, alpha = 0.8, shadow = true })
 
-    text(cr, fit(cr, now.title ~= '' and now.title or 'Unknown title', 34, TW, { font = U.FONT_LIGHT }), tx, 92, 34, col.fg,
-        { font = U.FONT_LIGHT, alpha = 0.95, shadow = true })
-    text(cr, fit(cr, now.artist ~= '' and now.artist or '—', 15, TW), tx, 120, 15, col.sub, { alpha = 0.85, shadow = true })
+    text(cr, fit(cr, now.title ~= '' and now.title or 'Unknown title', 34, TW, { font = TITLE_FONT }), tx, 92, 34, col.fg,
+        { font = TITLE_FONT, alpha = 0.95, shadow = true })
+    text(cr, fit(cr, now.artist ~= '' and now.artist or '—', 15, TW, { font = BODY_FONT }), tx, 120, 15, col.sub,
+        { font = BODY_FONT, alpha = 0.85, shadow = true })
 
     -- progress: a faint line fading out at both ends, and a "comet" fill that brightens toward the playhead
     local ly = 140.5
@@ -160,8 +163,8 @@ local function draw(cr)
         cairo_arc(cr, kx, ly, 3, 0, 2 * math.pi)
         cairo_fill(cr)
     end
-    text(cr, clock(now.pos), tx, 162, 11, col.muted, { alpha = 0.8, shadow = true })
-    text(cr, now.len > 0 and clock(now.len) or 'live', tx + TW, 162, 11, col.muted, { align = 'right', alpha = 0.8, shadow = true })
+    text(cr, clock(now.pos), tx, 162, 11, col.muted, { font = BODY_FONT, alpha = 0.8, shadow = true })
+    text(cr, now.len > 0 and clock(now.len) or 'live', tx + TW, 162, 11, col.muted, { font = BODY_FONT, align = 'right', alpha = 0.8, shadow = true })
 end
 
 -- 0 = hidden, 1 = fully shown; eases toward the target so the widget fades in/out.

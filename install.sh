@@ -65,6 +65,8 @@ install_user() {
     chmod +x "$HOME"/.local/bin/{ruxchipher-sentinel,lab-up,lab-down,focus-mode,sentinel-report,ruxchipher-greet,ruxchipher-greeter} \
              "$HOME/.config/conky/ruxchipher/art.sh"
 
+    fc-cache -f "$HOME/.local/share/fonts"   # Space Grotesk (now-playing widget), shipped in the repo, SIL OFL
+
     c "Building conky-clickable (lets the HUD and weather icon receive clicks)"
     cc -O2 -o "$HOME/.local/bin/conky-clickable" "$HOME/.config/conky/ruxchipher/tools/conky-clickable.c" -lX11 -lXext
 
