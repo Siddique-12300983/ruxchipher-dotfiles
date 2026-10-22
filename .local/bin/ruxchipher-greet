@@ -20,5 +20,11 @@ mins=$(awk -v d="$(date +%F)" '$1 == d { s += $2 } END { print s + 0 }' "$HOME/.
 study="$(( ${mins:-0} / 60 ))h $(( ${mins:-0} % 60 ))m"
 
 printf 'mode=%s\nalerts=%s\nlab=%s\ndays=%s\nstudy=%s\n' "$MODE" "${alerts:-0}" "${lab:-0}" "$days" "$study" > "$OUT"
+# the goodbye covers the whole screen (dim -> card -> fade to black), the welcome is just the card
+if [ "$MODE" = bye ]; then
+    export GREET_FULL=1
+    size=$(xrandr --current 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1 \2/p')
+    export GREET_W=${size% *} GREET_H=${size#* }
+fi
 pkill -f "^conky -c $CONF\$" 2>/dev/null
 exec conky -c "$CONF" >/dev/null 2>&1

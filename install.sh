@@ -11,7 +11,7 @@ set -euo pipefail
 REPO=$(cd "$(dirname "$0")" && pwd)
 OLD_HOME=/home/ruxchipher
 PACKAGES=(conky playerctl imagemagick python libvirt libnotify fastfetch kitty git curl
-          ttf-jetbrains-mono-nerd papirus-icon-theme plymouth gcc libx11 libxext)
+          ttf-jetbrains-mono-nerd papirus-icon-theme plymouth gcc libx11 libxext python-gobject xorg-xrandr)
 EXTENSIONS=(ddterm@amezin.github.com clipboard-indicator@tudmotu.com)
 
 c() { printf '\033[38;2;125;207;255m==>\033[0m %s\n' "$*"; }

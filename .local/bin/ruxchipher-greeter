@@ -1,34 +1,89 @@
-#!/bin/sh
-# ruxchipher-greeter: greet once after login, again every time the screen is unlocked,
-# and show a goodbye card when the machine shuts down or restarts.
-#
-# The goodbye uses a logind "delay" inhibitor: when shutdown starts, logind announces
-# PrepareForShutdown and waits (up to InhibitDelayMaxSec, 5 s by default) for delay locks
-# to be released. We show the card, wait ~2 s, then exit, which releases the lock.
-STATE="$HOME/.cache/ruxchipher/locked_at"
-mkdir -p "$(dirname "$STATE")"
+#!/usr/bin/env python3
+"""ruxchipher-greeter: welcome card after login and unlock, goodbye card before logout/shutdown.
 
-goodbye_watch() {
-    while true; do
-        systemd-inhibit --what=shutdown --mode=delay --who="ruxchipher" --why="goodbye card" sh -c '
-            gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1 |
-            while read -r line; do
-                case "$line" in
-                    *PrepareForShutdown*true*) ruxchipher-greet bye & sleep 2.2; exit 0 ;;
-                esac
-            done'
-        sleep 1
-    done
-}
-goodbye_watch &
+The goodbye can't use a logind delay inhibitor: GNOME asks logind to skip inhibitors when
+it reboots or powers off. Instead this registers as a GNOME session client. Before the
+session ends, gnome-session sends EndSession to every client and waits for each to answer,
+while the desktop is still on screen. We play the goodbye card (~3.5 s, ending on black),
+then answer, and shutdown carries on.
+"""
+import os
+import subprocess
+import time
 
-sleep 5
-ruxchipher-greet login &
+import gi
+gi.require_version('Gio', '2.0')
+from gi.repository import Gio, GLib
 
-gdbus monitor --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver |
-while read -r line; do
-    case "$line" in
-        *ActiveChanged*true*)  date +%s > "$STATE" ;;
-        *ActiveChanged*false*) ruxchipher-greet unlock "$(cat "$STATE" 2>/dev/null || echo 0)" & ;;
-    esac
-done
+GREET = os.path.expanduser('~/.local/bin/ruxchipher-greet')
+LOCKED_AT = os.path.expanduser('~/.cache/ruxchipher/locked_at')
+BYE_SECONDS = 3.6          # matches the goodbye animation in greet.lua
+
+bus = Gio.bus_get_sync(Gio.BusType.SESSION)
+client_path = None
+bye_proc = None
+
+
+def greet(*args):
+    return subprocess.Popen([GREET, *args])
+
+
+# ---------------------------------------------------------------- unlock
+def on_screensaver(_conn, _sender, _path, _iface, _signal, params):
+    active = params.unpack()[0]
+    if active:
+        os.makedirs(os.path.dirname(LOCKED_AT), exist_ok=True)
+        with open(LOCKED_AT, 'w') as f:
+            f.write(str(int(time.time())))
+    else:
+        try:
+            since = open(LOCKED_AT).read().strip()
+        except OSError:
+            since = '0'
+        greet('unlock', since)
+
+
+bus.signal_subscribe('org.gnome.ScreenSaver', 'org.gnome.ScreenSaver', 'ActiveChanged',
+                     '/org/gnome/ScreenSaver', None, Gio.DBusSignalFlags.NONE, on_screensaver)
+
+
+# ---------------------------------------------------------------- session end (logout / restart / power off)
+def respond(ok=True):
+    bus.call_sync('org.gnome.SessionManager', client_path, 'org.gnome.SessionManager.ClientPrivate',
+                  'EndSessionResponse', GLib.Variant('(bs)', (ok, '')), None, Gio.DBusCallFlags.NONE, -1, None)
+
+
+def on_client_signal(_conn, _sender, _path, _iface, signal, _params):
+    global bye_proc
+    print(f'session signal: {signal}', flush=True)
+    if signal == 'QueryEndSession':
+        respond()
+    elif signal == 'EndSession':
+        bye_proc = greet('bye')
+        GLib.timeout_add(int(BYE_SECONDS * 1000), lambda: (respond(), False)[1])
+    elif signal == 'CancelEndSession':
+        if bye_proc and bye_proc.poll() is None:
+            subprocess.run(['pkill', '-f', '^conky -c .*/greet.conf$'])
+    elif signal == 'Stop':
+        loop.quit()
+
+
+def register():
+    global client_path
+    startup_id = os.environ.get('DESKTOP_AUTOSTART_ID', '')
+    reply = bus.call_sync('org.gnome.SessionManager', '/org/gnome/SessionManager', 'org.gnome.SessionManager',
+                          'RegisterClient', GLib.Variant('(ss)', ('ruxchipher-greeter', startup_id)),
+                          GLib.VariantType('(o)'), Gio.DBusCallFlags.NONE, -1, None)
+    client_path = reply.unpack()[0]
+    print(f'registered with gnome-session as {client_path}', flush=True)
+    bus.signal_subscribe('org.gnome.SessionManager', 'org.gnome.SessionManager.ClientPrivate', None,
+                         client_path, None, Gio.DBusSignalFlags.NONE, on_client_signal)
+
+
+register()
+
+# ---------------------------------------------------------------- login
+GLib.timeout_add_seconds(5, lambda: (greet('login'), False)[1])
+
+loop = GLib.MainLoop()
+loop.run()

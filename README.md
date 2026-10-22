@@ -50,8 +50,10 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 ### Welcome card
 - **`ruxchipher-greeter`** (user service) + **`greet.lua`**: after login, and every time the screen is unlocked, a card fades in for
   ~3 s with a greeting, sentinel alerts while you were away, lab status and days to 2027. It's an override window, so it never steals focus.
-- **Goodbye card**: on shutdown or restart, a "See you soon, Siddique." card shows for ~2 s *before* the desktop closes.
-  It holds a logind delay inhibitor, so shutdown waits for it (Plymouth's own shutdown screen is on for under a second, too short to read).
+- **Goodbye**: on logout, restart or power off, the screen dims, a "See you soon, Siddique." card fades in, then everything
+  fades to black (~3.5 s) while the desktop is still up. The greeter registers as a **GNOME session client**: gnome-session waits
+  for every client to answer `EndSession`, so it answers after the animation. (A logind delay inhibitor didn't work: GNOME tells
+  logind to skip inhibitors on reboot, and Plymouth's shutdown screen is on for under a second.)
 
 ### System (`system/`, installed by `./install.sh --system`)
 - **Boot splash** (Plymouth script theme): the dimmed wallpaper with the shield logo fading in. Kept minimal on purpose,
