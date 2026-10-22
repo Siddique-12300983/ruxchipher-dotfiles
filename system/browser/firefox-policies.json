@@ -1,5 +1,11 @@
 {
   "policies": {
-    "Homepage": { "URL": "file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html", "StartPage": "homepage", "Locked": false }
+    "Homepage": { "URL": "file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html", "StartPage": "homepage", "Locked": false },
+    "ExtensionSettings": {
+      "{4520dc08-80f4-4b2e-982a-c17af42e5e4d}": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/tokyo-night-milav/latest.xpi"
+      }
+    }
   }
 }

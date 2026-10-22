@@ -1,0 +1,11 @@
+[/]
+enable-move-keybindings=true
+enable-smart-window-border-radius=true
+enable-snap-assist=true
+enable-tiling-system=true
+enable-window-border=true
+inner-gaps=uint32 10
+outer-gaps=uint32 14
+window-border-color='rgba(122,162,247,0.85)'
+window-border-width=uint32 2
+window-use-custom-border-color=true

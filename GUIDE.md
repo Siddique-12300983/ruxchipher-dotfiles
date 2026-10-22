@@ -63,6 +63,7 @@ Most things work as they are. These depend on the hardware or your own setup:
 | GPU | `hud.lua` looks for an NVIDIA card | without one, the GPU ring shows "asleep" |
 | Fans | `hud.lua` reads the `asus` sensor | other laptops name it differently, or have none |
 | Weather city | `~/.config/conky/ruxchipher/weather.py` (`CITY`) | |
+| Sentinel allowlist | `~/.config/ruxchipher/sentinel-allow.conf` | add `process  address` lines for listeners you expect |
 | Mission goals | `~/.config/conky/ruxchipher/mission.txt` | change `[ ]` to `[x]` when done |
 | Wallpaper logo position | widgets are laid out around the Arch logo at the left | for a different screen size, regenerate with `tools/wallpaper.py` |
 
@@ -77,6 +78,7 @@ After editing a widget file, restart the widgets by logging out and back in.
 | **Super+Alt+L** | start the lab (DC01, then WIN11 and KALI) |
 | **Super+Alt+Shift+L** | shut the lab down gracefully |
 | **Super+Alt+F** | focus mode: 50-minute timer, notifications muted (press again to stop early) |
+| **Super+Arrows** | snap the window into a tile (Tiling Shell); drag a window to the top edge for the layout picker |
 | **Super+Alt+S** | sentinel alert report (also: click the sentinel strip on the HUD) |
 
 Click the weather icon to animate it (it also plays by itself for a few seconds every 10 minutes).

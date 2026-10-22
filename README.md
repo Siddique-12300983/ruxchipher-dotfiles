@@ -45,6 +45,8 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 ### Security and lab tools (`.local/bin/`)
 - **`ruxchipher-sentinel`**: a systemd user service that alerts on failed authentication (journal) and on new listening TCP ports.
   It's a learning project for host-based detection, not a replacement for a real IDS/EDR.
+- **`sentinel-allow.conf`** (`.config/ruxchipher/`): expected listeners (Spotify Connect, local VM consoles) are logged
+  quietly to `allowed.log` instead of alerting. Failed passwords can never be allowlisted.
 - **`sentinel-report`**: today's alerts with a plain-language explanation of each (`--all` for the full log).
 - **`lab-up` / `lab-down`**: start the lab in order (DC first, clients after AD is up) and shut it down gracefully in reverse.
 - **`focus-mode`**: 50-minute study timer that mutes notifications and logs study time to the mission streak.
@@ -69,6 +71,10 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
   restores mouse input for the HUD and weather icon so their click actions work.
 
 ### Look and feel
+- **Tokyo Night shell theme** (`.themes/ruxchipher`, via the User Themes extension): top bar, menus, Quick Settings,
+  calendar, notifications and switchers recoloured on top of GNOME's own dark stylesheet, so it survives GNOME updates.
+- **Tiling Shell**: tiled windows with 10/14 px gaps and a thin Tokyo-blue border on the focused window (Super+Arrows).
+- **App themes**: Spotify via Spicetify (`text` theme, TokyoNight scheme) and the Tokyo Night Firefox theme (installed by policy).
 - Tokyo Night colours for GTK3/GTK4 (libadwaita) apps, **Papirus-Tokyo** icons (violet folders), a generated 4K wallpaper.
 - **fastfetch** terminal greeting, **ddterm** drop-down terminal on F12, clipboard history on Super+V.
 
@@ -81,6 +87,7 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 | Super+Alt+L / Super+Alt+Shift+L | lab up / lab down |
 | Super+Alt+F | focus mode on/off |
 | Super+Alt+S | sentinel alert report |
+| Super+Arrows | move window to a tile (Tiling Shell) |
 
 ## Repo layout
 

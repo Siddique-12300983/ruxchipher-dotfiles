@@ -4,7 +4,12 @@
 Watches the systemd journal for password failures (sudo, su, polkit, login screen,
 ssh) and polls `ss` for TCP ports that start listening after the sentinel started.
 Every alert is also appended to ~/.local/state/ruxchipher-sentinel/events.log.
+
+Expected listeners (Spotify Connect, VM consoles...) can be allowlisted in
+~/.config/ruxchipher/sentinel-allow.conf; those are logged quietly to allowed.log
+instead. Failed-authentication alerts are never allowlisted.
 """
+import fnmatch
 import json
 import re
 import subprocess
@@ -15,6 +20,8 @@ from pathlib import Path
 
 APP = "ruxchipher sentinel"
 LOG = Path.home() / ".local/state/ruxchipher-sentinel/events.log"
+ALLOWED_LOG = LOG.with_name("allowed.log")
+ALLOW_FILE = Path.home() / ".config/ruxchipher/sentinel-allow.conf"
 PORT_POLL_SECONDS = 15
 DEDUPE_SECONDS = 10
 
@@ -84,13 +91,35 @@ def listening_ports():
     return ports
 
 
+def load_allowlist():
+    """Rules are "<process> <address>" with shell wildcards; re-read on every poll so edits apply live."""
+    rules = []
+    try:
+        for line in ALLOW_FILE.read_text().splitlines():
+            parts = line.split("#", 1)[0].split()
+            if len(parts) >= 2:
+                rules.append((parts[0], parts[1]))
+    except OSError:
+        pass
+    return rules
+
+
+def allowed(proc, addr, rules):
+    name = "root" if proc.startswith("unknown") else proc
+    return any(fnmatch.fnmatch(name, p) and fnmatch.fnmatch(addr, a) for p, a in rules)
+
+
 def watch_ports():
     known = listening_ports()
     while True:
         time.sleep(PORT_POLL_SECONDS)
         current = listening_ports()
+        rules = load_allowlist()
         for addr, proc in current.items():
-            if addr not in known:
+            if addr not in known and allowed(proc, addr, rules):
+                with ALLOWED_LOG.open("a") as f:
+                    f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S}  allowed listener  |  {addr}  ·  process: {proc}\n")
+            elif addr not in known:
                 exposed = not addr.startswith(("127.", "[::1]", "localhost"))
                 notify("New listening port" + (" (network-exposed)" if exposed else ""),
                        f"{addr}  ·  process: {proc}",

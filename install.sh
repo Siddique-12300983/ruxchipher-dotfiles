@@ -2,7 +2,7 @@
 # ruxchipher dotfiles installer: Arch Linux + GNOME (Wayland).
 #
 #   ./install.sh --user     widgets, scripts, terminal, GTK colours, icons, shortcuts (no root, except packages)
-#   ./install.sh --system   boot splash, login screen, browser start page, lid-hibernate hook (sudo)
+#   ./install.sh --system   boot splash, login screen, browser start page + theme, lid hook, Spotify theme (sudo)
 #   ./install.sh --all      both
 #
 # Safe to re-run. Anything it replaces at system level is backed up with a .pre-ruxchipher suffix.
@@ -12,7 +12,9 @@ REPO=$(cd "$(dirname "$0")" && pwd)
 OLD_HOME=/home/ruxchipher
 PACKAGES=(conky playerctl imagemagick python libvirt libnotify fastfetch kitty git curl
           ttf-jetbrains-mono-nerd papirus-icon-theme plymouth gcc libx11 libxext python-gobject xorg-xrandr)
-EXTENSIONS=(ddterm@amezin.github.com clipboard-indicator@tudmotu.com)
+EXTENSIONS=(ddterm@amezin.github.com clipboard-indicator@tudmotu.com
+            user-theme@gnome-shell-extensions.gcampax.github.com tilingshell@ferrarodomenico.com)
+SPICETIFY_VERSION=2.46.2
 
 c() { printf '\033[38;2;125;207;255m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[38;2;255;158;100m  !\033[0m %s\n' "$*"; }
@@ -59,7 +61,7 @@ install_user() {
     install_packages
 
     c "Copying configs and scripts"
-    (cd "$REPO" && find .config .local -type f) | while read -r f; do put "$REPO/$f" "$HOME/$f"; done
+    (cd "$REPO" && find .config .local .themes -type f) | while read -r f; do put "$REPO/$f" "$HOME/$f"; done
     chmod +x "$HOME"/.local/bin/{ruxchipher-sentinel,lab-up,lab-down,focus-mode,sentinel-report,ruxchipher-greet,ruxchipher-greeter} \
              "$HOME/.config/conky/ruxchipher/art.sh"
 
@@ -97,6 +99,9 @@ install_user() {
     install_extensions
     dconf load /org/gnome/shell/extensions/ddterm/ < "$REPO/gnome/ddterm.dconf"
     dconf load /org/gnome/shell/extensions/clipboard-indicator/ < "$REPO/gnome/clipboard-indicator.dconf"
+    dconf load /org/gnome/shell/extensions/tilingshell/ < "$REPO/gnome/tilingshell.dconf"
+    # Tokyo Night top bar / menus: ~/.themes/ruxchipher, selected through the User Themes extension
+    dconf write /org/gnome/shell/extensions/user-theme/name "'ruxchipher'"
     # Super+V opens the clipboard, so GNOME's notification list keeps only Super+M
     gsettings set org.gnome.shell.keybindings toggle-message-tray "['<Super>m']"
 
@@ -123,6 +128,27 @@ install_user() {
 }
 
 backup() { [ -e "$1" ] && sudo cp -n "$1" "$1.pre-ruxchipher" || true; }
+
+# Spicetify "text" theme with the TokyoNight scheme, for the Flatpak Spotify.
+install_spotify_theme() {
+    local sp=/var/lib/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify
+    if [ ! -d "$sp" ]; then warn "Spotify (Flatpak) not installed, skipping the Spotify theme"; return; fi
+    c "Spotify theme (Spicetify, text / TokyoNight)"
+    mkdir -p "$HOME/.spicetify"
+    curl -sL "https://github.com/spicetify/cli/releases/download/v$SPICETIFY_VERSION/spicetify-$SPICETIFY_VERSION-linux-amd64.tar.gz" |
+        tar xz -C "$HOME/.spicetify"
+    ln -sf "$HOME/.spicetify/spicetify" "$HOME/.local/bin/spicetify"
+    # Spicetify patches Spotify's files: own them as this user instead of making them world-writable
+    sudo chown -R "$(id -u):$(id -g)" "$sp" && sudo chmod -R go-w "$sp"
+    spicetify config >/dev/null 2>&1 || true
+    local t="$HOME/.config/spicetify/Themes/text"; mkdir -p "$t"
+    for f in color.ini user.css; do
+        curl -sL -o "$t/$f" "https://raw.githubusercontent.com/spicetify/spicetify-themes/master/text/$f"
+    done
+    spicetify config spotify_path "$sp" prefs_path "$HOME/.var/app/com.spotify.Client/config/spotify/prefs" \
+        current_theme text color_scheme TokyoNight
+    spicetify backup apply || warn "run Spotify once, close it, then: spicetify backup apply"
+}
 
 install_system() {
     c "Brand files + Plymouth theme"
@@ -173,6 +199,7 @@ install_system() {
         warn "this machine doesn't boot a mkinitcpio UKI; set up the splash by hand (see GUIDE.md, 'Boot splash on GRUB')"
         sudo plymouth-set-default-theme ruxchipher
     fi
+    install_spotify_theme
     c "System setup done. Reboot to see the boot splash."
 }
 
