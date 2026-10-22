@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""ruxchipher sentinel: desktop alerts for failed authentication and new listening ports.
+
+Watches the systemd journal for password failures (sudo, su, polkit, login screen,
+ssh) and polls `ss` for TCP ports that start listening after the sentinel started.
+Every alert is also appended to ~/.local/state/ruxchipher-sentinel/events.log.
+"""
+import json
+import re
+import subprocess
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+APP = "ruxchipher sentinel"
+LOG = Path.home() / ".local/state/ruxchipher-sentinel/events.log"
+PORT_POLL_SECONDS = 15
+DEDUPE_SECONDS = 10
+
+AUTH_RULES = [
+    (re.compile(r"pam_unix\((?P<svc>[\w-]+):auth\): authentication failure.*?(?:user=(?P<user>\S+))?$"),
+     "Failed password"),
+    (re.compile(r"(?P<n>\d+) incorrect password attempts?"), "sudo: wrong password"),
+    (re.compile(r"Failed password for (?:invalid user )?(?P<user>\S+) from (?P<ip>\S+)"), "SSH login failed"),
+    (re.compile(r"Invalid user (?P<user>\S+) from (?P<ip>\S+)"), "SSH: unknown user"),
+    (re.compile(r"Operator of .* FAILED to authenticate"), "Admin prompt failed"),
+]
+
+_last_alert = {}
+_lock = threading.Lock()
+
+
+def notify(title, body, urgency="normal", icon="security-high"):
+    key = (title, body)
+    now = time.monotonic()
+    with _lock:
+        if now - _last_alert.get(key, -DEDUPE_SECONDS) < DEDUPE_SECONDS:
+            return
+        _last_alert[key] = now
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    with LOG.open("a") as f:
+        f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S}  {title}  |  {body}\n")
+    subprocess.run(["notify-send", "-a", APP, "-u", urgency, "-i", icon, f"⚠ {title}", body],
+                   check=False)
+
+
+def watch_auth():
+    proc = subprocess.Popen(["journalctl", "-f", "-n", "0", "-o", "json"],
+                            stdout=subprocess.PIPE, text=True)
+    for line in proc.stdout:
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        msg = entry.get("MESSAGE")
+        if not isinstance(msg, str):
+            continue
+        for pattern, title in AUTH_RULES:
+            m = pattern.search(msg)
+            if not m:
+                continue
+            g = m.groupdict()
+            who = entry.get("SYSLOG_IDENTIFIER") or entry.get("_COMM") or "system"
+            parts = [f"source: {g.get('svc') or who}"]
+            if g.get("user"):
+                parts.append(f"user: {g['user']}")
+            if g.get("ip"):
+                parts.append(f"from: {g['ip']}")
+            notify(title, "  ·  ".join(parts), urgency="critical", icon="dialog-password")
+            break
+
+
+def listening_ports():
+    out = subprocess.run(["ss", "-tlnpH"], capture_output=True, text=True, check=False).stdout
+    ports = {}
+    for line in out.splitlines():
+        cols = line.split()
+        if len(cols) < 4:
+            continue
+        local = cols[3]
+        proc = re.search(r'\(\("([^"]+)"', line)
+        ports[local] = proc.group(1) if proc else "unknown (root-owned)"
+    return ports
+
+
+def watch_ports():
+    known = listening_ports()
+    while True:
+        time.sleep(PORT_POLL_SECONDS)
+        current = listening_ports()
+        for addr, proc in current.items():
+            if addr not in known:
+                exposed = not addr.startswith(("127.", "[::1]", "localhost"))
+                notify("New listening port" + (" (network-exposed)" if exposed else ""),
+                       f"{addr}  ·  process: {proc}",
+                       urgency="critical" if exposed else "normal",
+                       icon="network-wired")
+        known = current
+
+
+if __name__ == "__main__":
+    threading.Thread(target=watch_ports, daemon=True).start()
+    watch_auth()

@@ -1,0 +1,53 @@
+// ruxchipher terminal greeting (Tokyo Night)
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "file",
+    "source": "~/.config/fastfetch/logo.txt",
+    "color": { "1": "38;2;125;207;255", "2": "38;2;187;154;247" },
+    "padding": { "top": 1, "left": 2, "right": 4 }
+  },
+  "display": {
+    "separator": "  ",
+    "color": { "keys": "38;2;122;162;247", "output": "38;2;192;202;245" },
+    "key": { "width": 11 }
+  },
+  "modules": [
+    {
+      "type": "command",
+      "key": " ",
+      "outputColor": "1;38;2;187;154;247",
+      "text": "h=$(date +%H); if [ $h -lt 5 ]; then g='Burning the midnight oil'; elif [ $h -lt 12 ]; then g='Good morning'; elif [ $h -lt 18 ]; then g='Good afternoon'; else g='Good evening'; fi; echo \"$g, Siddique.\""
+    },
+    {
+      "type": "command",
+      "key": " ",
+      "outputColor": "38;2;86;95;137",
+      "text": "date '+%A %d %B · %H:%M'"
+    },
+    "break",
+    { "type": "os", "key": "󰣇 os      " },
+    { "type": "kernel", "key": "󰌽 kernel  " },
+    { "type": "uptime", "key": "󰅐 uptime  " },
+    { "type": "cpu", "key": "󰻠 cpu     ", "format": "{name}" },
+    { "type": "gpu", "key": "󰢮 gpu     ", "format": "{name}", "hideType": "integrated" },
+    { "type": "memory", "key": "󰍛 ram     " },
+    { "type": "disk", "key": "󰋊 disk    ", "folders": "/" },
+    { "type": "localip", "key": "󰩟 ip      ", "showIpv6": false },
+    "break",
+    {
+      "type": "command",
+      "key": "󰒋 lab     ",
+      "keyColor": "38;2;125;207;255",
+      "text": "n=$(virsh -c qemu:///system list --name --state-running 2>/dev/null | grep -c .); echo \"$n/3 VMs running · harbourline freight\""
+    },
+    {
+      "type": "command",
+      "key": "󰒃 sentinel",
+      "keyColor": "38;2;158;206;106",
+      "text": "if systemctl --user -q is-active ruxchipher-sentinel; then echo 'armed · watching logins & ports'; else echo 'offline'; fi"
+    },
+    "break",
+    { "type": "colors", "symbol": "circle", "paddingLeft": 0 }
+  ]
+}

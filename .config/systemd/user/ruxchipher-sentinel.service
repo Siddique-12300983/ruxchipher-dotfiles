@@ -1,0 +1,12 @@
+[Unit]
+Description=ruxchipher sentinel: alerts for failed logins and new listening ports
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/ruxchipher-sentinel
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

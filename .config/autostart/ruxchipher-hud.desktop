@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=ruxchipher HUD
+Comment=Conky desktop widgets (HUD, lab, left panels, now playing)
+Exec=sh -c "sleep 4; for w in conky lab left media; do conky -c /home/ruxchipher/.config/conky/ruxchipher/$w.conf & done; wait"
+OnlyShowIn=GNOME;
+X-GNOME-Autostart-enabled=true

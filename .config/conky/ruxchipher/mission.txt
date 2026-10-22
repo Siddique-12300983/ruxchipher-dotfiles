@@ -1,0 +1,11 @@
+# Mission file for the desktop widget. Edit freely, it reloads by itself.
+# [x] = done, [ ] = to do. Up to 6 objectives are shown.
+goal: purple team internship
+deadline: 2027-01-01
+repo: ~/purple-team-journey
+[x] KVM host + isolated lab network
+[x] Windows Server 2025 DC + Win11 client
+[x] Harbourline Freight: users, OUs, GPOs
+[x] Kerberoasting SPN + 4769 detection
+[ ] Sysmon on DC + client
+[ ] Wazuh SIEM + alert rules
