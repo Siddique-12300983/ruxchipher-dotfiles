@@ -1,67 +1,94 @@
 #!/bin/sh
-# sentinel-report: show today's sentinel alerts with a plain-language explanation of each.
+# sentinel-report: compact list of today's sentinel alerts, newest first, one line each.
 #   sentinel-report          today's alerts
 #   sentinel-report --all    every alert in the log
-#   sentinel-report --window open the report in its own kitty window (used by the HUD)
+#   sentinel-report --window open the report in its own small kitty window (used by the HUD)
 
 LOG="$HOME/.local/state/ruxchipher-sentinel/events.log"
 
 if [ "$1" = "--window" ]; then
-    exec kitty --class ruxchipher-sentinel --title "sentinel · alerts" \
-        -o initial_window_width=96c -o initial_window_height=26c -o remember_window_size=no \
-        sh -c "'$0'; printf '\n\033[38;2;86;95;137m  press any key to close\033[0m'; stty -echo -icanon; dd bs=1 count=1 >/dev/null 2>&1"
+    rows=$("$0" --count)
+    [ "$rows" -gt 12 ] && rows=12
+    exec kitty --class ruxchipher-sentinel --title "sentinel" \
+        -o hide_window_decorations=yes -o window_padding_width=10 -o remember_window_size=no \
+        -o initial_window_width=60c -o initial_window_height=$((rows + 7))c \
+        sh -c "'$0' --limit 12; stty -echo -icanon; dd bs=1 count=1 >/dev/null 2>&1"
 fi
 
-C='\033[38;2;125;207;255m'; P='\033[38;2;187;154;247m'; R='\033[38;2;247;118;142m'
-O='\033[38;2;255;158;100m'; G='\033[38;2;158;206;106m'; M='\033[38;2;86;95;137m'; F='\033[38;2;192;202;245m'
-B='\033[1m'; N='\033[0m'
-
 today=$(date +%F)
-if [ "$1" = "--all" ]; then filter=""; scope="all time"; else filter="$today"; scope="today"; fi
+filter="$today"; scope="today"; limit=0
+case "$1" in
+    --all) filter=""; scope="all time" ;;
+    --limit) limit=$2 ;;
+esac
+
+# One merged row per alert group; --count just reports how many rows there are.
+rows() {
+    [ -s "$LOG" ] || return 0
+    grep "^$filter" "$LOG" | tac | awk -F'  [|]  ' '
+    {
+        time = substr($1, 12, 5); title = substr($1, 22); d = $2
+        proc = d; sub(/.*process: /, "", proc); sub(/ \(root-owned\)/, " (root)", proc)
+        if (title ~ /^(Failed password|sudo: wrong password|Admin prompt failed|SSH)/) {
+            icon = (title ~ /^SSH/) ? "󰣀" : "󰌾"
+            label = (title ~ /^SSH/) ? "ssh login" : "wrong pw"
+            what = d; sub(/.*source: /, "", what); sub(/  ·.*/, "", what)
+            if (d ~ /from: /) { ip = d; sub(/.*from: /, "", ip); what = what " " ip }
+            tag = (d ~ /sentinel-test/) ? "self-test" : "check"
+        } else {
+            icon = "󰈀"
+            port = d; sub(/  ·.*/, "", port); sub(/.*:/, "", port)
+            label = "port " port
+            what = proc
+            if (proc ~ /spotify/) tag = "expected"
+            else if (port == "48765") tag = "self-test"
+            else if (title ~ /network-exposed/) tag = "exposed"
+            else tag = "local"
+        }
+        key = icon label what tag
+        if (key == last || (tag == "expected" && icon what tag == lastloose)) { n[r]++; next }
+        r++; T[r] = time; I[r] = icon; L[r] = label; W[r] = what; G[r] = tag; n[r] = 1
+        last = key; lastloose = icon what tag
+    }
+    END { for (i = 1; i <= r; i++) printf "%s\t%s\t%s\t%s\t%s\t%d\n", T[i], I[i], L[i], W[i], G[i], n[i] }'
+}
+
+if [ "$1" = "--count" ]; then rows | wc -l; exit 0; fi
+
+C='\033[38;2;125;207;255m'; R='\033[38;2;247;118;142m'; O='\033[38;2;255;158;100m'
+G='\033[38;2;158;206;106m'; M='\033[38;2;86;95;137m'; F='\033[38;2;192;202;245m'; B='\033[1m'; N='\033[0m'
+LINE="${M}  ──────────────────────────────────────────────────────${N}"
 
 if systemctl --user -q is-active ruxchipher-sentinel; then state="${G}● armed${N}"; else state="${O}● offline${N}"; fi
+all=$(rows)
+total=$(printf '%s' "$all" | grep -c .)
 
-printf "\n  ${B}${C}󰒃 ruxchipher sentinel${N}   %b   ${M}alerts ${scope}${N}\n" "$state"
-printf "  ${M}────────────────────────────────────────────────────────────────────────────────${N}\n"
+printf "\n  ${B}${C}󰒃 sentinel${N}  %b%*s${M}%s · %s${N}\n" "$state" 26 "" "$scope" "$total"
+printf "%b\n" "$LINE"
 
-if [ ! -s "$LOG" ] || ! grep -q "^$filter" "$LOG"; then
-    printf "\n  ${G}✓ no alerts ${scope}.${N} All quiet.\n"
+if [ "$total" -eq 0 ]; then
+    printf "\n  ${G}✓ all quiet${N}\n"
     exit 0
 fi
 
-grep "^$filter" "$LOG" | while IFS= read -r line; do
-    ts=$(printf '%s' "$line" | cut -c1-19)
-    rest=$(printf '%s' "$line" | cut -c22-)
-    title=${rest%%  |  *}
-    detail=${rest#*  |  }
-
-    case "$title" in
-        "Failed password"*|"sudo: wrong password"*|"Admin prompt failed"*)
-            colour=$R; icon="󰌾"
-            why="Someone typed a wrong password. If it wasn't you, check who had access to the laptop." ;;
-        "SSH"*)
-            colour=$R; icon="󰣀"
-            why="A remote login over SSH failed. Repeated ones from the same IP mean password guessing." ;;
-        "New listening port (network-exposed)"*)
-            colour=$O; icon="󰈀"
-            why="A program started accepting connections from your network. Fine if you recognise it." ;;
-        "New listening port"*)
-            colour=$C; icon="󰈀"
-            why="A program opened a local-only port (only this laptop can reach it). Usually harmless." ;;
-        *)
-            colour=$P; icon="!"; why="" ;;
+flagged=0
+printf '%s\n' "$all" | { [ "$limit" -gt 0 ] && head -n "$limit" || cat; } > "${TMPDIR:-/tmp}/sentinel-rows.$$"
+while IFS="$(printf '\t')" read -r time icon label what tag count; do
+    case "$tag" in
+        check)   tc=$R ;;
+        exposed) tc=$O ;;
+        local)   tc=$C ;;
+        *)       tc=$M ;;
     esac
-    case "$detail" in
-        *spotify*) why="Spotify Connect: lets your phone control playback on this laptop. Expected." ;;
-        *48765*python*) why="This was the sentinel self-test run during setup. Expected." ;;
-        *sentinel-test*) why="This was the sentinel self-test run during setup. Expected." ;;
-    esac
+    [ "$count" -gt 1 ] && what="$what ×$count"
+    printf "  ${M}%s${N}  ${tc}%s${N}  ${F}%-11s${N} %-20.20s ${tc}%s${N}\n" "$time" "$icon" "$label" "$what" "$tag"
+done < "${TMPDIR:-/tmp}/sentinel-rows.$$"
+rm -f "${TMPDIR:-/tmp}/sentinel-rows.$$"
 
-    printf "\n  ${colour}${B}%s %s${N}  ${M}%s${N}\n" "$icon" "$title" "$ts"
-    printf "    ${F}%s${N}\n" "$detail"
-    [ -n "$why" ] && printf "    ${M}↳ %s${N}\n" "$why"
-done
-
-total=$(grep -c "^$filter" "$LOG")
-printf "\n  ${M}────────────────────────────────────────────────────────────────────────────────${N}\n"
-printf "  ${F}%s alert(s) ${scope}${N}   ${M}full log: %s${N}\n" "$total" "$LOG"
+flagged=$(printf '%s\n' "$all" | cut -f5 | grep -cE '^(check|exposed)$')
+printf "%b\n" "$LINE"
+if [ "$flagged" -gt 0 ]; then
+    printf "  ${R}! %s need a look${N}%*s${M}any key · close${N}\n" "$flagged" 22 ""
+else
+    printf "  ${G}✓ nothing needs attention${N}%*s${M}any key · close${N}\n" 14 ""
+fi
