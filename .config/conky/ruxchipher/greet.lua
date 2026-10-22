@@ -1,20 +1,23 @@
--- ruxchipher GREET: a short welcome card shown after login or unlock (~3 s, then conky exits).
+-- ruxchipher GREET: a short card shown after login or unlock (~3 s), and a goodbye card on shutdown (~2 s).
 -- Status text comes from ~/.cache/ruxchipher/greet.txt, written by ~/.local/bin/ruxchipher-greet.
 local DIR = os.getenv('HOME') .. '/.config/conky/ruxchipher/'
 local U = dofile(DIR .. 'common.lua')
 local col, text, rgba = U.col, U.text, U.rgba
 
 local W, H = 640, 210
-local FRAMES, FADE = 60, 8          -- at 20 fps: 3 s total, 0.4 s fades
-
 local info = {}
 local raw = U.readf(os.getenv('HOME') .. '/.cache/ruxchipher/greet.txt') or ''
 for k, v in raw:gmatch('(%w+)=([^\n]*)') do info[k] = v end
+
+local bye = info.mode == 'bye'
+local FADE = 8                                  -- 0.4 s at 20 fps
+local FRAMES = bye and 44 or 60                 -- goodbye stays up (no fade-out), welcome fades after 3 s
 
 local function greeting()
     local h = tonumber(os.date('%H'))
     local hi = h < 5 and 'Burning the midnight oil,' or h < 12 and 'Good morning,'
         or h < 18 and 'Good afternoon,' or 'Good evening,'
+    if bye then return 'See you soon,' end
     return info.mode == 'unlock' and 'Welcome back,' or hi
 end
 
@@ -25,7 +28,7 @@ function conky_greet()
     frame = frame + 1
     local a = 1
     if frame < FADE then a = frame / FADE end
-    if frame > FRAMES - FADE then a = math.max(0, (FRAMES - frame) / FADE) end
+    if not bye and frame > FRAMES - FADE then a = math.max(0, (FRAMES - frame) / FADE) end
     local rise = (1 - math.min(1, frame / FADE)) * 10      -- slides up slightly while fading in
 
     local cs = U.surface()
@@ -55,8 +58,14 @@ function conky_greet()
     local tx = x
     tx = tx + text(cr, '\u{F0483} ', tx, 168, 13, ac)
     tx = tx + text(cr, alerts .. (info.mode == 'unlock' and ' alerts while you were away' or ' alerts today'), tx, 168, 12, ac)
-    tx = tx + text(cr, '   \u{F048B} lab ' .. (info.lab or '0') .. '/3', tx, 168, 12, col.sub)
-    text(cr, '   ' .. (info.days or '?') .. ' days to 2027', tx, 168, 12, col.muted)
+    local lab = tonumber(info.lab) or 0
+    tx = tx + text(cr, '   \u{F048B} lab ' .. lab .. '/3' .. ((bye and lab > 0) and ' still on' or ''), tx, 168, 12,
+        (bye and lab > 0) and col.orange or col.sub)
+    if bye then
+        text(cr, '   study today ' .. (info.study or '0m'), tx, 168, 12, col.muted)
+    else
+        text(cr, '   ' .. (info.days or '?') .. ' days to 2027', tx, 168, 12, col.muted)
+    end
 
     cairo_pop_group_to_source(cr)
     cairo_paint_with_alpha(cr, a)
