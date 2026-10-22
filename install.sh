@@ -11,7 +11,7 @@ set -euo pipefail
 REPO=$(cd "$(dirname "$0")" && pwd)
 OLD_HOME=/home/ruxchipher
 PACKAGES=(conky playerctl imagemagick python libvirt libnotify fastfetch kitty git curl
-          ttf-jetbrains-mono-nerd papirus-icon-theme plymouth)
+          ttf-jetbrains-mono-nerd papirus-icon-theme plymouth gcc libx11 libxext)
 EXTENSIONS=(ddterm@amezin.github.com clipboard-indicator@tudmotu.com)
 
 c() { printf '\033[38;2;125;207;255m==>\033[0m %s\n' "$*"; }
@@ -62,6 +62,9 @@ install_user() {
     (cd "$REPO" && find .config .local -type f) | while read -r f; do put "$REPO/$f" "$HOME/$f"; done
     chmod +x "$HOME"/.local/bin/{ruxchipher-sentinel,lab-up,lab-down,focus-mode,sentinel-report} \
              "$HOME/.config/conky/ruxchipher/art.sh"
+
+    c "Building conky-clickable (lets the HUD and weather icon receive clicks)"
+    cc -O2 -o "$HOME/.local/bin/conky-clickable" "$HOME/.config/conky/ruxchipher/tools/conky-clickable.c" -lX11 -lXext
 
     c "Wallpaper"
     mkdir -p "$HOME/Pictures/Wallpapers"

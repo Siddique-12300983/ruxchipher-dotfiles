@@ -1,5 +1,5 @@
 -- ruxchipher WX: the big weather icon from the weather panel, animated.
--- It only animates while the pointer is over it, or for a few seconds every 10 minutes,
+-- It only animates for 6 seconds after a click, or for a few seconds every 10 minutes,
 -- so most of the time it's a still image (cheap on battery).
 local DIR = os.getenv('HOME') .. '/.config/conky/ruxchipher/'
 local U = dofile(DIR .. 'common.lua')
@@ -10,7 +10,7 @@ local CX, CY = BX + 26, BY - 22     -- approximate glyph centre
 local PERIOD, BURST = 600, 4        -- auto-play BURST seconds every PERIOD seconds
 
 local code, night = nil, false
-local hover = false
+local play_until = 0      -- frame number a click-triggered animation runs until
 local frame, anim_frame = 0, 0
 
 local function load()
@@ -99,7 +99,7 @@ function conky_wx()
 
     local icon, c = U.weather_icon(code, night)
     local burst = (os.time() % PERIOD) < BURST or anim_frame < BURST * 10
-    local playing = hover or burst
+    local playing = frame < play_until or burst
     if playing then anim_frame = anim_frame + 1 end
 
     local cs = U.surface()
@@ -109,8 +109,8 @@ function conky_wx()
     cairo_surface_destroy(cs)
 end
 
+-- GNOME only delivers clicks (not hover) to background X windows, so a click plays the animation.
 function conky_wx_mouse(event)
-    if event.type == 'mouse_enter' or event.type == 'mouse_move' then hover = true
-    elseif event.type == 'mouse_leave' then hover = false end
+    if event.type == 'button_down' then play_until = frame + 60 end
     return false
 end

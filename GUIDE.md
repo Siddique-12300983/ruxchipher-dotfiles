@@ -79,7 +79,8 @@ After editing a widget file, restart the widgets by logging out and back in.
 | **Super+Alt+F** | focus mode: 50-minute timer, notifications muted (press again to stop early) |
 | **Super+Alt+S** | sentinel alert report (also: click the sentinel strip on the HUD) |
 
-The weather icon animates when you hover over it, and for a few seconds every 10 minutes.
+Click the weather icon to animate it (it also plays by itself for a few seconds every 10 minutes).
+GNOME only gives background widgets clicks, not hover, so click is the trigger.
 
 Terminal commands:
 ```bash

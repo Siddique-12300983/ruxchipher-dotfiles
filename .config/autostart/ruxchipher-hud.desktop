@@ -2,6 +2,6 @@
 Type=Application
 Name=ruxchipher HUD
 Comment=Conky desktop widgets (HUD, lab, left panels, now playing)
-Exec=sh -c "sleep 4; for w in conky lab left media; do conky -c /home/ruxchipher/.config/conky/ruxchipher/$w.conf & done; sleep 2; conky -c /home/ruxchipher/.config/conky/ruxchipher/wx.conf & wait"
+Exec=sh -c "sleep 4; for w in conky lab left media; do conky -c /home/ruxchipher/.config/conky/ruxchipher/$w.conf & done; sleep 2; conky -c /home/ruxchipher/.config/conky/ruxchipher/wx.conf & sleep 3; /home/ruxchipher/.local/bin/conky-clickable ruxchipher-hud ruxchipher-wx; wait"
 OnlyShowIn=GNOME;
 X-GNOME-Autostart-enabled=true

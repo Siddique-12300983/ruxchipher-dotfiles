@@ -34,7 +34,7 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 - **`left.lua`**: greeting with a rotating security tip, which becomes a **focus-mode countdown** during study sessions;
   a **mission tracker** (countdown, objectives from `mission.txt`, a streak and heatmap from lab commits plus study time);
   Sydney **weather** and a calendar.
-- **`wx.lua`**: the weather icon, **animated** (turning sun, falling rain, lightning, snow), but only while hovered
+- **`wx.lua`**: the weather icon, **animated** (turning sun, falling rain, lightning, snow), but only for 6 seconds after a click
   or for 4 seconds every 10 minutes. Otherwise it's a still image, to save battery.
 - **`media.lua`** (bottom left): now playing via `playerctl`. It fades out when nothing is playing.
 
@@ -53,6 +53,9 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 - **Login screen**: shield logo and an "authorised access only" banner.
 - **Browser start page**: clock, search, and quick links to my portfolio, repos and training sites, for Chrome, Firefox and GNOME Web.
 - **Lid-hibernate hook**: hibernates after 45 minutes with the lid closed on battery, even if the laptop keeps waking itself (it used to drain overnight).
+
+- **`conky-clickable`** (`tools/conky-clickable.c`): Conky makes undecorated windows click-through; this small Xlib helper
+  restores mouse input for the HUD and weather icon so their click actions work.
 
 ### Look and feel
 - Tokyo Night colours for GTK3/GTK4 (libadwaita) apps, **Papirus-Tokyo** icons (violet folders), a generated 4K wallpaper.
