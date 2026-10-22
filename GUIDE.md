@@ -126,4 +126,4 @@ python -m venv /tmp/venv && /tmp/venv/bin/pip install numpy pillow
 /tmp/venv/bin/python tools/wallpaper.py ~/Pictures/Wallpapers/geology.png wallpaper.png   # needs the original Arch wallpaper for the logo
 /tmp/venv/bin/python tools/make_assets.py out/ wallpapers/ruxchipher-tokyonight.png
 ```
-Edit the text in `make_assets.py` (name, intro line, boot log lines) to personalise the boot splash.
+Edit the text in `make_assets.py` (name, `CODENAME`, boot log lines) to personalise the boot splash.

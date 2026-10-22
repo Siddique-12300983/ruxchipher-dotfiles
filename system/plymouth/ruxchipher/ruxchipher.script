@@ -1,151 +1,187 @@
 # ruxchipher boot splash (Plymouth script theme), Tokyo Night.
+# Plain style like Plymouth's bundled themes: objects with .image/.sprite fields at top level,
+# one refresh callback (50 fps) that sets every opacity inline. The whole intro fits in ~2 s.
 
-W = Window.GetWidth();
-H = Window.GetHeight();
 Window.SetBackgroundTopColor(0.06, 0.06, 0.09);
 Window.SetBackgroundBottomColor(0.04, 0.04, 0.06);
 
+screen.w = Window.GetWidth();
+screen.h = Window.GetHeight();
+
 mode = Plymouth.GetMode();
-shutting_down = (mode == "shutdown" || mode == "reboot");
+down = 0;
+if (mode == "shutdown" || mode == "reboot") down = 1;
 
-# ---------------------------------------------------------------- background
-bg_img = Image("bg.png");
-bg = Sprite(bg_img.Scale(W, H));
-bg.SetZ(-100);
+# ---------------------------------------------------------------- background + logo
+bg.image = Image("bg.png");
+bg.sprite = Sprite(bg.image.Scale(screen.w, screen.h));
+bg.sprite.SetZ(-100);
 
-# ---------------------------------------------------------------- logo
-logo_size = Math.Int(H * 0.22);
-logo_img = Image("shield.png").Scale(logo_size, logo_size);
-logo = Sprite(logo_img);
-logo_x = Math.Int((W - logo_size) / 2);
-logo_y = Math.Int(H * 0.40 - logo_size / 1.6);
-logo.SetPosition(logo_x, logo_y, 10);
-logo.SetOpacity(0);
+logo.size = Math.Int(screen.h * 0.22);
+logo.image = Image("shield.png").Scale(logo.size, logo.size);
+logo.sprite = Sprite(logo.image);
+logo.x = Math.Int((screen.w - logo.size) / 2);
+logo.y = Math.Int(screen.h * 0.40 - logo.size / 1.6);
+logo.sprite.SetPosition(logo.x, logo.y, 10);
+logo.sprite.SetOpacity(0);
 
-fun centered(file, y) {
-    img = Image(file);
-    s = Sprite(img);
-    s.SetPosition(Math.Int((W - img.GetWidth()) / 2), y, 10);
-    s.SetOpacity(0);
-    return s;
+top = logo.y + logo.size + 18;
+
+# ---------------------------------------------------------------- text items (faded in by refresh)
+# item[i].start = frame the fade begins (50 frames = 1 s)
+count = 0;
+
+if (down) {
+    item[0].image = Image("bye.png");
+    item[0].start = 5;
+    item[0].y = top;
+    item[1].image = Image("bye_sub.png");
+    item[1].start = 14;
+    item[1].y = top + 58;
+    count = 2;
+} else {
+    item[0].image = Image("name.png");
+    item[0].start = 6;
+    item[0].y = top;
+    count = 1;
 }
 
-below = logo_y + logo_size + 18;
+for (i = 0; i < count; i++) {
+    item[i].sprite = Sprite(item[i].image);
+    item[i].sprite.SetPosition(Math.Int((screen.w - item[i].image.GetWidth()) / 2), item[i].y, 10);
+    item[i].sprite.SetOpacity(0);
+}
 
-if (shutting_down) {
-    bye = centered("bye.png", below);
-    bye_sub = centered("bye_sub.png", below + 58);
-} else {
-    name = centered("name.png", below);
-    codename = centered("codename.png", below + 66);
-    intro = centered("intro.png", below + 96);
+# ---------------------------------------------------------------- boot only: typed codename, bar, boot log
+bar.w = 420;
+bar.x = Math.Int((screen.w - bar.w) / 2);
+bar.y = top + 132;
+bar.shown = 0;
+bar.progress = 0;
 
-    # progress bar
-    bar_w = 420;
-    bar_x = Math.Int((W - bar_w) / 2);
-    bar_y = below + 146;
-    track = Sprite(Image("bar_track.png"));
-    track.SetPosition(bar_x, bar_y, 10);
-    track.SetOpacity(0);
-    fill_img = Image("bar_fill.png");
-    fill = Sprite();
-    fill.SetPosition(bar_x, bar_y, 11);
+if (!down) {
+    # "❯ ruxchipher" types itself out, then the block cursor blinks
+    for (k = 0; k <= 10; k++) code.frames[k] = Image("type" + k + ".png");
+    code.blink_off = Image("type_nocursor.png");
+    code.sprite = Sprite(code.frames[0]);
+    code.sprite.SetPosition(Math.Int((screen.w - code.frames[10].GetWidth()) / 2), top + 70, 10);
+    code.sprite.SetOpacity(0);
 
-    granted = centered("granted.png", bar_y + 22);
+    bar.track = Sprite(Image("bar_track.png"));
+    bar.track.SetPosition(bar.x, bar.y, 10);
+    bar.track.SetOpacity(0);
+    bar.fill_image = Image("bar_fill.png");
+    bar.fill = Sprite(bar.fill_image.Scale(1, 4));
+    bar.fill.SetPosition(bar.x, bar.y, 11);
+    bar.fill.SetOpacity(0);
 
-    # boot log, bottom-left
+    granted.image = Image("granted.png");
+    granted.sprite = Sprite(granted.image);
+    granted.sprite.SetPosition(Math.Int((screen.w - granted.image.GetWidth()) / 2), bar.y + 22, 10);
+    granted.sprite.SetOpacity(0);
+    granted.from = -1;
+
     for (i = 0; i < 5; i++) {
-        line[i] = Sprite(Image("line" + i + ".png"));
-        line[i].SetPosition(Math.Int(W * 0.04), Math.Int(H - H * 0.05 - (5 - i) * 26), 10);
-        line[i].SetOpacity(0);
+        bootlog[i].sprite = Sprite(Image("line" + i + ".png"));
+        bootlog[i].sprite.SetPosition(Math.Int(screen.w * 0.04), Math.Int(screen.h * 0.95 - (5 - i) * 26), 10);
+        bootlog[i].sprite.SetOpacity(0);
     }
 }
 
-# ---------------------------------------------------------------- animation
+# ---------------------------------------------------------------- animation (50 fps)
 frame = 0;
-progress = 0;
-shown = 0;
 
-fun fade(sprite, start, length) {
-    o = (global.frame - start) / length;
+fun refresh_callback() {
+    global.frame = global.frame + 1;
+    f = global.frame;
+
+    if (f < 15) logo.sprite.SetOpacity(f / 15);
+    else logo.sprite.SetOpacity(0.86 + 0.14 * Math.Sin(f / 18));
+
+    for (i = 0; i < global.count; i++) {
+        o = (f - item[i].start) / 14;
+        if (o < 0) o = 0;
+        if (o > 1) o = 1;
+        item[i].sprite.SetOpacity(o);
+    }
+
+    if (global.down) return;
+
+    # typed codename: visible from frame 16, one letter every 2 frames, then cursor blinks
+    if (f >= 16) {
+        code.sprite.SetOpacity(1);
+        k = Math.Int((f - 18) / 2);
+        if (k < 0) k = 0;
+        if (k < 10) code.sprite.SetImage(code.frames[k]);
+        else {
+            blink = Math.Int(f / 12) - 2 * Math.Int(f / 24);
+            if (blink) code.sprite.SetImage(code.blink_off);
+            else code.sprite.SetImage(code.frames[10]);
+        }
+    }
+
+    o = (f - 24) / 10;
     if (o < 0) o = 0;
     if (o > 1) o = 1;
-    sprite.SetOpacity(o);
-}
+    bar.track.SetOpacity(o);
+    bar.fill.SetOpacity(o);
 
-fun refresh() {
-    global.frame++;
-
-    # logo fades in, then breathes
-    if (global.frame < 40) logo.SetOpacity(global.frame / 40);
-    else logo.SetOpacity(0.86 + 0.14 * Math.Sin(global.frame / 22));
-
-    if (shutting_down) {
-        fade(bye, 15, 30);
-        fade(bye_sub, 30, 30);
-        return;
+    for (i = 0; i < 5; i++) {
+        o = (f - (26 + i * 9)) / 8;
+        if (o < 0) o = 0;
+        if (o > 1) o = 1;
+        bootlog[i].sprite.SetOpacity(o);
     }
 
-    fade(name, 18, 30);
-    fade(codename, 32, 30);
-    fade(intro, 42, 30);
-    fade(track, 50, 20);
-
-    for (i = 0; i < 5; i++) fade(line[i], 60 + i * 28, 14);
-
-    # ease the bar toward real global.progress, never backwards
-    target = global.progress;
-    timed = (global.frame - 50) / 400;
+    # bar eases toward real progress or a ~1.2 s timed fill, whichever is further, never backwards
+    target = bar.progress;
+    timed = (f - 24) / 60;
     if (timed > target) target = timed;
     if (target > 1) target = 1;
-    if (target > global.shown) global.shown = global.shown + (target - global.shown) * 0.08;
-    if (global.frame > 50 && global.shown > 0.005) {
-        fill.SetImage(fill_img.Scale(Math.Int(bar_w * global.shown) + 1, 4));
+    if (target > bar.shown) bar.shown = bar.shown + (target - bar.shown) * 0.2;
+    if (bar.shown > 0.003) bar.fill.SetImage(bar.fill_image.Scale(Math.Int(bar.w * bar.shown) + 1, 4));
+
+    if (bar.shown > 0.8) {
+        if (granted.from < 0) granted.from = f;
+        o = (f - granted.from) / 10;
+        if (o > 1) o = 1;
+        granted.sprite.SetOpacity(o);
     }
-
-    if (global.shown > 0.85) fade(granted, global.granted_at, 25);
-    else global.granted_at = global.frame;
 }
-Plymouth.SetRefreshFunction(refresh);
+Plymouth.SetRefreshFunction(refresh_callback);
 
-fun boot_progress(duration, p) {
-    global.progress = p;
+fun boot_progress_callback(duration, progress) {
+    bar.progress = progress;
 }
-Plymouth.SetBootProgressFunction(boot_progress);
+Plymouth.SetBootProgressFunction(boot_progress_callback);
 
 # ---------------------------------------------------------------- messages / password prompts
-msg_sprite = Sprite();
-msg_sprite.SetZ(20);
+message.sprite = Sprite();
 
-fun show_message(text) {
-    img = Image.Text(text, 0.66, 0.69, 0.84, 1, "JetBrainsMono Nerd Font 12");
-    msg_sprite.SetImage(img);
-    msg_sprite.SetPosition(Math.Int((W - img.GetWidth()) / 2), Math.Int(H * 0.92), 20);
+fun message_callback(text) {
+    message.image = Image.Text(text, 0.66, 0.69, 0.84, 1);
+    message.sprite.SetImage(message.image);
+    message.sprite.SetPosition(Math.Int((screen.w - message.image.GetWidth()) / 2), Math.Int(screen.h * 0.92), 20);
 }
-Plymouth.SetMessageFunction(show_message);
+Plymouth.SetMessageFunction(message_callback);
 
-prompt_sprite = Sprite();
-bullets_sprite = Sprite();
+prompt.sprite = Sprite();
+bullets.sprite = Sprite();
 
-fun display_password(prompt, bullets) {
-    p = Image.Text(prompt, 0.75, 0.79, 0.96, 1, "JetBrainsMono Nerd Font 13");
-    prompt_sprite.SetImage(p);
-    prompt_sprite.SetPosition(Math.Int((W - p.GetWidth()) / 2), Math.Int(H * 0.80), 30);
+fun password_callback(text, count) {
+    prompt.image = Image.Text(text, 0.75, 0.79, 0.96, 1);
+    prompt.sprite.SetImage(prompt.image);
+    prompt.sprite.SetPosition(Math.Int((screen.w - prompt.image.GetWidth()) / 2), Math.Int(screen.h * 0.80), 30);
     dots = "";
-    for (i = 0; i < bullets; i++) dots += "● ";
-    b = Image.Text(dots + "_", 0.49, 0.81, 1, 1, "JetBrainsMono Nerd Font 16");
-    bullets_sprite.SetImage(b);
-    bullets_sprite.SetPosition(Math.Int((W - b.GetWidth()) / 2), Math.Int(H * 0.80) + 34, 30);
+    for (i = 0; i < count; i++) dots = dots + "* ";
+    bullets.image = Image.Text(dots + "_", 0.49, 0.81, 1, 1);
+    bullets.sprite.SetImage(bullets.image);
+    bullets.sprite.SetPosition(Math.Int((screen.w - bullets.image.GetWidth()) / 2), Math.Int(screen.h * 0.80) + 30, 30);
 }
-Plymouth.SetDisplayPasswordFunction(display_password);
+Plymouth.SetDisplayPasswordFunction(password_callback);
 
-fun display_normal() {
-    prompt_sprite.SetImage(Image.Text("", 0, 0, 0, 0));
-    bullets_sprite.SetImage(Image.Text("", 0, 0, 0, 0));
+fun normal_callback() {
+    prompt.sprite.SetOpacity(0);
+    bullets.sprite.SetOpacity(0);
 }
-Plymouth.SetDisplayNormalFunction(display_normal);
-
-fun quit() {
-    if (!shutting_down) granted.SetOpacity(1);
-}
-Plymouth.SetQuitFunction(quit);
+Plymouth.SetDisplayNormalFunction(normal_callback);

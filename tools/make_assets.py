@@ -140,8 +140,18 @@ wall = Image.blend(wall, Image.new('RGB', wall.size, (8, 9, 14)), 0.55)
 wall.save(ply / 'bg.png')
 
 text_img('ABU BAKAR SIDDIQUE', 'ExtraBold', 46, grad_colors=(CYAN, PURPLE), spacing=6).save(ply / 'name.png')
-text_img('codename  ruxchipher', 'Regular', 18, color=SUB, spacing=3).save(ply / 'codename.png')
-text_img('cyber security student  ·  sydney', 'Light', 17, color=MUTED).save(ply / 'intro.png')
+# codename types itself out: type0.png .. type10.png are "❯ " + the first k letters
+CODENAME = 'ruxchipher'
+full = text_img('❯ ' + CODENAME, 'Bold', 26, grad_colors=(CYAN, PURPLE), spacing=4)
+for k in range(len(CODENAME) + 1):
+    # reveal the finished gradient line up to k letters, so each letter keeps its final colour
+    part_w = text_img('❯ ' + CODENAME[:k], 'Bold', 26, color=FG, spacing=4).width - 4
+    frame = Image.new('RGBA', (full.width + 24, full.height), (0, 0, 0, 0))   # fixed size: the line never shifts
+    frame.paste(full.crop((0, 0, part_w, full.height)), (0, 0))
+    if k == len(CODENAME):
+        frame.save(ply / 'type_nocursor.png')                 # blink "off" frame
+    ImageDraw.Draw(frame).rectangle((part_w + 6, 9, part_w + 18, full.height - 7), fill=CYAN + (255,))
+    frame.save(ply / f'type{k}.png')
 
 lines = [
     ('[  OK  ]', GREEN, ' Mounting /home/ruxchipher'),
@@ -165,6 +175,6 @@ text_img('powering down the workstation…', 'Light', 17, color=MUTED).save(ply 
 Image.new('RGBA', (420, 4), BLUE[:3] + (40,)).save(ply / 'bar_track.png')
 fill = fast_gradient(420, 4, CYAN, PURPLE).convert('RGBA')
 fill.save(ply / 'bar_fill.png')
-Image.new('RGBA', (10, 18), CYAN + (255,)).save(ply / 'cursor.png')
+Image.new('RGBA', (13, 26), CYAN + (255,)).save(ply / 'cursor.png')
 text_img('●', 'Regular', 22, color=CYAN).save(ply / 'bullet.png')
 print('assets ->', OUT)

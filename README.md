@@ -48,7 +48,8 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 - **`focus-mode`**: 50-minute study timer that mutes notifications and logs study time to the mission streak.
 
 ### System (`system/`, installed by `./install.sh --system`)
-- **Boot splash** (Plymouth script theme): shield logo, name, animated boot log, progress bar and a goodbye screen on shutdown.
+- **Boot splash** (Plymouth script theme, ~2 s): shield logo, name, the codename typing itself out with a blinking cursor,
+  animated boot log, progress bar and a goodbye screen on shutdown.
   The UKI firmware splash is the shield too.
 - **Login screen**: shield logo and an "authorised access only" banner.
 - **Browser start page**: clock, search, and quick links to my portfolio, repos and training sites, for Chrome, Firefox and GNOME Web.
