@@ -161,4 +161,24 @@ function M.surface()
         conky_window.visual, conky_window.width, conky_window.height)
 end
 
+-- wttr.in weather code -> Nerd Font icon + colour (shared by left.lua and wx.lua)
+M.ICON = {
+    sun = '\u{F0599}', moon = '\u{F0594}', partly = '\u{F0595}', cloud = '\u{F0590}',
+    fog = '\u{F0591}', rain = '\u{F0597}', pour = '\u{F0596}', storm = '\u{F0593}', snow = '\u{F0598}',
+}
+
+function M.weather_icon(code, night)
+    code = tonumber(code) or 0
+    if code == 113 then return night and M.ICON.moon or M.ICON.sun, col.yellow end
+    if code == 116 then return M.ICON.partly, col.sub end
+    if code == 119 or code == 122 then return M.ICON.cloud, col.sub end
+    if code == 143 or code == 248 or code == 260 then return M.ICON.fog, col.muted end
+    if code == 200 or (code >= 386 and code <= 395) then return M.ICON.storm, col.purple end
+    if (code >= 179 and code <= 230) or (code >= 320 and code <= 377 and code ~= 353 and code ~= 356 and code ~= 359) then
+        return M.ICON.snow, col.fg
+    end
+    if code == 305 or code == 308 or code == 356 or code == 359 then return M.ICON.pour, col.blue end
+    return M.ICON.rain, col.cyan
+end
+
 return M

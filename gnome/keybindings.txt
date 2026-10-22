@@ -1,0 +1,4 @@
+lab-up|Lab up|<Super><Alt>l|/home/ruxchipher/.local/bin/lab-up
+lab-down|Lab down|<Super><Alt><Shift>l|/home/ruxchipher/.local/bin/lab-down
+focus|Focus mode|<Super><Alt>f|/home/ruxchipher/.local/bin/focus-mode
+sentinel|Sentinel alerts|<Super><Alt>s|/home/ruxchipher/.local/bin/sentinel-report --window

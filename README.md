@@ -1,76 +1,83 @@
+<p align="center"><img src="screenshots/shield.png" width="140" alt="ruxchipher shield logo"></p>
+
 # ruxchipher dotfiles
 
-My Arch Linux workstation (GNOME on Wayland), customised into a security-aware desktop in Tokyo Night colours.
-Part of my path to a purple team internship. See the portfolio at **[ruxchipher.com](https://ruxchipher.com)**.
+My Arch Linux workstation (GNOME on Wayland), customised into a security-aware desktop in Tokyo Night colours,
+from the boot screen to the browser start page. Part of my path to a purple team internship.
+Portfolio: **[ruxchipher.com](https://ruxchipher.com)**
+
+> **New machine?** Follow **[GUIDE.md](GUIDE.md)**. It's two commands: `./install.sh --user`, then optionally `./install.sh --system`.
 
 | Main HUD | Left panels |
 |---|---|
 | ![HUD](screenshots/hud.png) | ![Greeting, mission tracker, weather and calendar](screenshots/left-panels.png) |
 
-| Lab VMs (preview data) | Now playing (preview data) |
+| Lab VMs (preview data) | Now playing (preview data) | Sentinel alert (preview) |
+|---|---|---|
+| ![Lab widget](screenshots/lab-widget.png) | ![Now playing widget](screenshots/now-playing.png) | ![Sentinel alert](screenshots/sentinel-alert.png) |
+
+| Browser start page | Focus mode |
 |---|---|
-| ![Lab widget](screenshots/lab-widget.png) | ![Now playing widget](screenshots/now-playing.png) |
+| ![Start page](screenshots/startpage.png) | ![Focus mode countdown](screenshots/focus-mode.png) |
 
 > The Wi-Fi name and local IP are blurred in the HUD screenshot.
 
 ## What's inside
 
-### ruxchipher HUD: desktop widgets (`.config/conky/ruxchipher/`)
-Four transparent widgets drawn from scratch in **Lua + cairo** on Conky. No Conky text templates are used.
+### Desktop widgets (`.config/conky/ruxchipher/`)
+Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
 
-- **`hud.lua`** (top right): clock; CPU / RAM / GPU gauge rings that turn red above 85%; temperatures; live network graph; disk, battery and fans; top processes.
-  The GPU is only queried with `nvidia-smi` when its PCI runtime power state is already `active`, so the widget never wakes the dGPU and drains the battery.
-- **`lab.lua`** (bottom right): status tiles for my KVM lab VMs (DC01, WIN11, KALI), with per-VM CPU % from `virsh domstats` and the isolated lab network state.
-- **`left.lua`** (left side): a time-of-day greeting and rotating security tip; a **mission tracker** (countdown, objectives from `mission.txt`, commit streak and 28-day heatmap from my lab repo); Sydney **weather** (via `weather.py` and wttr.in) and a month calendar.
-- **`media.lua`** (bottom left): now playing from any MPRIS player through `playerctl`, with album art (`art.sh`). It fades out when nothing is playing.
-- **`common.lua`**: shared drawing helpers and palette.
+- **`hud.lua`** (top right): clock; CPU / RAM / GPU gauges; temperatures; network graph; disk, battery and fans; top processes;
+  and a **sentinel strip** that pulses red for 10 minutes after an alert. Click it, or press **Super+Alt+S**, for today's alert report.
+  The GPU is only queried when it's already awake, so the widget never wakes the dGPU.
+- **`lab.lua`** (bottom right): live status and CPU of the KVM lab VMs from `virsh domstats`.
+- **`left.lua`**: greeting with a rotating security tip, which becomes a **focus-mode countdown** during study sessions;
+  a **mission tracker** (countdown, objectives from `mission.txt`, a streak and heatmap from lab commits plus study time);
+  Sydney **weather** and a calendar.
+- **`wx.lua`**: the weather icon, **animated** (turning sun, falling rain, lightning, snow), but only while hovered
+  or for 4 seconds every 10 minutes. Otherwise it's a still image, to save battery.
+- **`media.lua`** (bottom left): now playing via `playerctl`. It fades out when nothing is playing.
 
-GNOME has no wlr-layer-shell, so the widgets render through XWayland as `desktop`-type windows (`output_backend = 'x11'`).
+![Weather icon animation frames](screenshots/weather-animation.png)
 
-### sentinel: host alerting (`.local/bin/ruxchipher-sentinel`)
-A small Python service, run as a systemd user unit, that sends desktop notifications for:
-- **failed authentication** read from the systemd journal: PAM failures (sudo, su, polkit, login screen), sudo wrong-password counts, SSH failed or invalid-user logins;
-- **new listening TCP ports** (from `ss`), marked critical when they're not bound to localhost.
+### Security and lab tools (`.local/bin/`)
+- **`ruxchipher-sentinel`**: a systemd user service that alerts on failed authentication (journal) and on new listening TCP ports.
+  It's a learning project for host-based detection, not a replacement for a real IDS/EDR.
+- **`sentinel-report`**: today's alerts with a plain-language explanation of each (`--all` for the full log).
+- **`lab-up` / `lab-down`**: start the lab in order (DC first, clients after AD is up) and shut it down gracefully in reverse.
+- **`focus-mode`**: 50-minute study timer that mutes notifications and logs study time to the mission streak.
 
-Alerts are de-duplicated and appended to `~/.local/state/ruxchipher-sentinel/events.log`.
-It's a learning project for host-based detection, not a replacement for a real IDS/EDR.
+### System (`system/`, installed by `./install.sh --system`)
+- **Boot splash** (Plymouth script theme): shield logo, name, animated boot log, progress bar and a goodbye screen on shutdown.
+  The UKI firmware splash is the shield too.
+- **Login screen**: shield logo and an "authorised access only" banner.
+- **Browser start page**: clock, search, and quick links to my portfolio, repos and training sites, for Chrome, Firefox and GNOME Web.
+- **Lid-hibernate hook**: hibernates after 45 minutes with the lid closed on battery, even if the laptop keeps waking itself (it used to drain overnight).
 
-### Terminal and GNOME
-- **`.config/fastfetch/`**: terminal greeting with a shield logo, a time-based greeting, system info, and live lab VM and sentinel status.
-- **`gnome/ddterm.dconf`**: drop-down terminal on **F12** (ddterm extension), Tokyo Night, fish, JetBrains Mono.
-- **`gnome/clipboard-indicator.dconf`**: Windows-style clipboard history on **Super+V** (Clipboard Indicator extension).
+### Look and feel
+- Tokyo Night colours for GTK3/GTK4 (libadwaita) apps, **Papirus-Tokyo** icons (violet folders), a generated 4K wallpaper.
+- **fastfetch** terminal greeting, **ddterm** drop-down terminal on F12, clipboard history on Super+V.
 
-## Requirements
+## Shortcuts
 
-Arch packages: `conky` (1.25+, built with Lua + cairo), `playerctl`, `imagemagick`, `python`, `libvirt`, `libnotify`, `fastfetch`, `ttf-jetbrains-mono-nerd`.
-GNOME extensions: [ddterm](https://extensions.gnome.org/extension/3780/ddterm/) and [Clipboard Indicator](https://extensions.gnome.org/extension/779/clipboard-indicator/).
+| Keys | Action |
+|---|---|
+| F12 | drop-down terminal |
+| Super+V | clipboard history |
+| Super+Alt+L / Super+Alt+Shift+L | lab up / lab down |
+| Super+Alt+F | focus mode on/off |
+| Super+Alt+S | sentinel alert report |
 
-## Install
+## Repo layout
 
-```bash
-git clone https://github.com/Siddique-12300983/ruxchipher-dotfiles.git
-cd ruxchipher-dotfiles
-cp -r .config/* ~/.config/
-cp .local/bin/ruxchipher-sentinel ~/.local/bin/ && chmod +x ~/.local/bin/ruxchipher-sentinel
-
-systemctl --user daemon-reload
-systemctl --user enable --now ruxchipher-sentinel.service
-
-dconf load /org/gnome/shell/extensions/ddterm/ < gnome/ddterm.dconf
-dconf load /org/gnome/shell/extensions/clipboard-indicator/ < gnome/clipboard-indicator.dconf
 ```
-
-Then log out and back in. The widgets start from `~/.config/autostart/ruxchipher-hud.desktop`.
-
-> **Note:** the `.conf` files and the autostart entry use absolute paths under `/home/ruxchipher`.
-> If your username is different, replace that path, for example:
-> `grep -rl /home/ruxchipher ~/.config/conky/ruxchipher ~/.config/autostart | xargs sed -i "s|/home/ruxchipher|$HOME|g"`
-
-## Customise
-
-- **Mission:** edit `~/.config/conky/ruxchipher/mission.txt` and change `[ ]` to `[x]` as you finish objectives. It reloads by itself.
-- **Weather city:** change `CITY` in `weather.py`.
-- **Lab VMs:** edit the `VMS` table at the top of `lab.lua`, so the names match `virsh list --all`.
+.config/  .local/      user files (copied to ~ by install.sh, with paths adjusted)
+gnome/                 dconf dumps + keyboard shortcuts
+system/                boot splash, logo, GDM, browser policies, lid hook
+tools/                 generators for the logo, boot images, wallpaper and start page
+wallpapers/            the generated wallpaper
+install.sh  GUIDE.md   installer + step-by-step guide
+```
 
 ## License
 

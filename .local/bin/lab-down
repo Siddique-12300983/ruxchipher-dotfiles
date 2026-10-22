@@ -1,0 +1,21 @@
+#!/bin/sh
+# lab-down: shut the lab down gracefully in reverse order (attacker, client, then DC).
+
+V="virsh -c qemu:///system"
+APP="ruxchipher lab"
+TIMEOUT=120
+
+say() { notify-send -a "$APP" -i computer "$1" "$2"; }
+running() { $V domstate "$1" 2>/dev/null | grep -q running; }
+
+say "Lab shutting down" "KALI → WIN11 → DC01"
+for vm in KALI WIN11 DC01; do
+    running "$vm" || continue
+    $V shutdown "$vm" >/dev/null 2>&1
+    t=0
+    while running "$vm" && [ $t -lt $TIMEOUT ]; do sleep 3; t=$((t + 3)); done
+    if running "$vm"; then
+        say "$vm did not shut down" "still running after ${TIMEOUT}s; use virt-manager to force it off"
+    fi
+done
+say "Lab is down" "all VMs stopped"

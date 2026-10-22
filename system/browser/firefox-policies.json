@@ -1,0 +1,5 @@
+{
+  "policies": {
+    "Homepage": { "URL": "file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html", "StartPage": "homepage", "Locked": false }
+  }
+}

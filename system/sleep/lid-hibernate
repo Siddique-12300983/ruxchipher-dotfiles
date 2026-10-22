@@ -1,0 +1,37 @@
+#!/bin/sh
+# Lid closed on battery: hibernate once the laptop has been asleep for LIMIT seconds in total.
+#
+# This laptop wakes from s2idle roughly every 30 minutes with the lid shut, and
+# each wake restarts suspend-then-hibernate's own timer, so it never hibernates.
+# Counting from the first suspend (kept in /run) survives those wake-ups.
+
+STAMP=/run/lid-sleep-start
+LIMIT=$((45 * 60))
+
+lid_closed() { grep -qs closed /proc/acpi/button/lid/*/state; }
+on_battery() { [ "$(cat /sys/class/power_supply/ACAD/online 2>/dev/null)" = 0 ]; }
+
+case "$1/$2" in
+    pre/suspend|pre/suspend-then-hibernate)
+        [ -f "$STAMP" ] || date +%s > "$STAMP"
+        ;;
+    post/suspend|post/suspend-then-hibernate)
+        if lid_closed && on_battery; then
+            start=$(cat "$STAMP" 2>/dev/null || date +%s)
+            slept=$(( $(date +%s) - start ))
+            if [ "$slept" -ge "$LIMIT" ]; then
+                rm -f "$STAMP"
+                logger -t lid-hibernate "lid closed on battery for $((slept / 60)) min, hibernating"
+                # Delay so this sleep operation finishes first. If hibernate fails,
+                # logind re-suspends anyway because the lid is still closed.
+                systemd-run --no-block --on-active=5 --unit=lid-hibernate-now systemctl hibernate
+            fi
+        else
+            rm -f "$STAMP"
+        fi
+        ;;
+    post/hibernate)
+        rm -f "$STAMP"
+        ;;
+esac
+exit 0

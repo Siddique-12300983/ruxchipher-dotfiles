@@ -1,0 +1,47 @@
+#!/bin/sh
+# focus-mode: study timer with Do Not Disturb.
+#   focus-mode            toggle (start if idle, stop if running)
+#   focus-mode start [N]  start an N-minute session (default 50)
+#   focus-mode stop       end the session and log the minutes studied
+# State is read by the desktop widgets (left.lua) to show the countdown and study streak.
+
+STATE="$HOME/.cache/ruxchipher/focus"            # start_epoch duration_sec previous_banners
+LOG="$HOME/.local/state/ruxchipher/study.log"    # YYYY-MM-DD minutes
+UNIT=ruxchipher-focus-end
+APP="ruxchipher focus"
+SELF=$(readlink -f "$0")
+
+start() {
+    mins=${1:-50}
+    mkdir -p "$(dirname "$STATE")"
+    banners=$(gsettings get org.gnome.desktop.notifications show-banners)
+    echo "$(date +%s) $((mins * 60)) $banners" > "$STATE"
+    notify-send -a "$APP" -i alarm "Focus mode on" "$mins minutes · notifications muted"
+    gsettings set org.gnome.desktop.notifications show-banners false
+    systemctl --user stop "$UNIT.timer" 2>/dev/null
+    systemctl --user reset-failed "$UNIT.service" "$UNIT.timer" 2>/dev/null
+    systemd-run --user --quiet --unit="$UNIT" --on-active="${mins}m" "$SELF" stop
+}
+
+stop() {
+    [ -f "$STATE" ] || exit 0
+    read -r started duration banners < "$STATE"
+    rm -f "$STATE"
+    systemctl --user stop "$UNIT.timer" 2>/dev/null
+    gsettings set org.gnome.desktop.notifications show-banners "${banners:-true}"
+    mins=$(( ($(date +%s) - started) / 60 ))
+    [ "$mins" -gt "$((duration / 60))" ] && mins=$((duration / 60))
+    if [ "$mins" -ge 1 ]; then
+        mkdir -p "$(dirname "$LOG")"
+        echo "$(date +%F) $mins" >> "$LOG"
+    fi
+    today=$(awk -v d="$(date +%F)" '$1 == d { s += $2 } END { print s + 0 }' "$LOG" 2>/dev/null)
+    notify-send -a "$APP" -i alarm "Focus session done" "$mins min this session · $((today / 60))h $((today % 60))m today"
+}
+
+case "${1:-toggle}" in
+    start)  start "$2" ;;
+    stop)   stop ;;
+    toggle) if [ -f "$STATE" ]; then stop; else start; fi ;;
+    *)      echo "usage: focus-mode [toggle|start [minutes]|stop]" >&2; exit 2 ;;
+esac

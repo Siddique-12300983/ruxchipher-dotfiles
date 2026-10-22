@@ -1,0 +1,31 @@
+#!/bin/sh
+# lab-up: start the Harbourline Freight lab in order (DC first, then client, then attacker).
+# Snapshots are left manual: these VMs use external (overlay) snapshots, and taking one on
+# every start would keep growing the disk chain.
+
+V="virsh -c qemu:///system"
+APP="ruxchipher lab"
+DC=DC01
+REST="WIN11 KALI"
+DC_WAIT=45          # seconds to let AD services come up before clients look for the domain
+
+say() { notify-send -a "$APP" -i computer "$1" "$2"; }
+running() { $V domstate "$1" 2>/dev/null | grep -q running; }
+
+if ! $V net-info lab 2>/dev/null | grep -q 'Active:.*yes'; then
+    $V net-start lab >/dev/null 2>&1 || { say "Lab network failed to start" "virsh net-start lab"; exit 1; }
+fi
+
+if running "$DC"; then
+    say "Lab starting" "$DC already running"
+else
+    $V start "$DC" >/dev/null || { say "Could not start $DC" "check virt-manager"; exit 1; }
+    say "Lab starting" "$DC is booting, clients follow in ${DC_WAIT}s"
+    sleep "$DC_WAIT"
+fi
+
+for vm in $REST; do
+    running "$vm" || $V start "$vm" >/dev/null || say "Could not start $vm" "check virt-manager"
+done
+
+say "Lab is up" "DC01 · WIN11 · KALI running on the isolated lab network"

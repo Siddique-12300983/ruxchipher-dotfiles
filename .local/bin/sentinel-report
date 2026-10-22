@@ -1,0 +1,67 @@
+#!/bin/sh
+# sentinel-report: show today's sentinel alerts with a plain-language explanation of each.
+#   sentinel-report          today's alerts
+#   sentinel-report --all    every alert in the log
+#   sentinel-report --window open the report in its own kitty window (used by the HUD)
+
+LOG="$HOME/.local/state/ruxchipher-sentinel/events.log"
+
+if [ "$1" = "--window" ]; then
+    exec kitty --class ruxchipher-sentinel --title "sentinel · alerts" \
+        -o initial_window_width=96c -o initial_window_height=26c -o remember_window_size=no \
+        sh -c "'$0'; printf '\n\033[38;2;86;95;137m  press any key to close\033[0m'; stty -echo -icanon; dd bs=1 count=1 >/dev/null 2>&1"
+fi
+
+C='\033[38;2;125;207;255m'; P='\033[38;2;187;154;247m'; R='\033[38;2;247;118;142m'
+O='\033[38;2;255;158;100m'; G='\033[38;2;158;206;106m'; M='\033[38;2;86;95;137m'; F='\033[38;2;192;202;245m'
+B='\033[1m'; N='\033[0m'
+
+today=$(date +%F)
+if [ "$1" = "--all" ]; then filter=""; scope="all time"; else filter="$today"; scope="today"; fi
+
+if systemctl --user -q is-active ruxchipher-sentinel; then state="${G}● armed${N}"; else state="${O}● offline${N}"; fi
+
+printf "\n  ${B}${C}󰒃 ruxchipher sentinel${N}   %b   ${M}alerts ${scope}${N}\n" "$state"
+printf "  ${M}────────────────────────────────────────────────────────────────────────────────${N}\n"
+
+if [ ! -s "$LOG" ] || ! grep -q "^$filter" "$LOG"; then
+    printf "\n  ${G}✓ no alerts ${scope}.${N} All quiet.\n"
+    exit 0
+fi
+
+grep "^$filter" "$LOG" | while IFS= read -r line; do
+    ts=$(printf '%s' "$line" | cut -c1-19)
+    rest=$(printf '%s' "$line" | cut -c22-)
+    title=${rest%%  |  *}
+    detail=${rest#*  |  }
+
+    case "$title" in
+        "Failed password"*|"sudo: wrong password"*|"Admin prompt failed"*)
+            colour=$R; icon="󰌾"
+            why="Someone typed a wrong password. If it wasn't you, check who had access to the laptop." ;;
+        "SSH"*)
+            colour=$R; icon="󰣀"
+            why="A remote login over SSH failed. Repeated ones from the same IP mean password guessing." ;;
+        "New listening port (network-exposed)"*)
+            colour=$O; icon="󰈀"
+            why="A program started accepting connections from your network. Fine if you recognise it." ;;
+        "New listening port"*)
+            colour=$C; icon="󰈀"
+            why="A program opened a local-only port (only this laptop can reach it). Usually harmless." ;;
+        *)
+            colour=$P; icon="!"; why="" ;;
+    esac
+    case "$detail" in
+        *spotify*) why="Spotify Connect: lets your phone control playback on this laptop. Expected." ;;
+        *48765*python*) why="This was the sentinel self-test run during setup. Expected." ;;
+        *sentinel-test*) why="This was the sentinel self-test run during setup. Expected." ;;
+    esac
+
+    printf "\n  ${colour}${B}%s %s${N}  ${M}%s${N}\n" "$icon" "$title" "$ts"
+    printf "    ${F}%s${N}\n" "$detail"
+    [ -n "$why" ] && printf "    ${M}↳ %s${N}\n" "$why"
+done
+
+total=$(grep -c "^$filter" "$LOG")
+printf "\n  ${M}────────────────────────────────────────────────────────────────────────────────${N}\n"
+printf "  ${F}%s alert(s) ${scope}${N}   ${M}full log: %s${N}\n" "$total" "$LOG"

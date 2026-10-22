@@ -64,14 +64,33 @@ local function load_commits()
     end
 end
 
+-- study sessions logged by ~/.local/bin/focus-mode ("YYYY-MM-DD minutes")
+local study = {}
+local focus = nil      -- { start, duration } while a focus session is running
+
+local function load_study()
+    study = {}
+    local raw = U.readf(os.getenv('HOME') .. '/.local/state/ruxchipher/study.log')
+    if not raw then return end
+    for d, m in raw:gmatch('(%d+-%d+-%d+) (%d+)') do study[d] = (study[d] or 0) + tonumber(m) end
+end
+
+local function load_focus()
+    local raw = U.readf(os.getenv('HOME') .. '/.cache/ruxchipher/focus')
+    local st, dur = (raw or ''):match('^(%d+) (%d+)')
+    focus = st and { start = tonumber(st), duration = tonumber(dur) } or nil
+end
+
+local function active(day) return commits[day] or (study[day] or 0) > 0 end
+
 local function day_key(offset)
     return os.date('%Y-%m-%d', os.time() - offset * 86400)
 end
 
 local function streak()
-    local start = commits[day_key(0)] and 0 or 1
+    local start = active(day_key(0)) and 0 or 1
     local n = 0
-    while commits[day_key(start + n)] do n = n + 1 end
+    while active(day_key(start + n)) do n = n + 1 end
     return n
 end
 
@@ -84,24 +103,7 @@ end
 
 ---------------------------------------------------------------- weather data
 
-local ICON = {
-    sun = '\u{F0599}', moon = '\u{F0594}', partly = '\u{F0595}', cloud = '\u{F0590}',
-    fog = '\u{F0591}', rain = '\u{F0597}', pour = '\u{F0596}', storm = '\u{F0593}', snow = '\u{F0598}',
-}
-
-local function weather_icon(code, night)
-    code = tonumber(code) or 0
-    if code == 113 then return night and ICON.moon or ICON.sun, col.yellow end
-    if code == 116 then return ICON.partly, col.sub end
-    if code == 119 or code == 122 then return ICON.cloud, col.sub end
-    if code == 143 or code == 248 or code == 260 then return ICON.fog, col.muted end
-    if code == 200 or (code >= 386 and code <= 395) then return ICON.storm, col.purple end
-    if (code >= 179 and code <= 230) or (code >= 320 and code <= 377 and code ~= 353 and code ~= 356 and code ~= 359) then
-        return ICON.snow, col.fg
-    end
-    if code == 305 or code == 308 or code == 356 or code == 359 then return ICON.pour, col.blue end
-    return ICON.rain, col.cyan
-end
+local weather_icon = U.weather_icon
 
 local weather = {}
 
@@ -125,6 +127,20 @@ local function draw_greeting(cr)
         pattern = U.grad(10, 0, 340, 0, col.cyan, col.purple),
     })
     text(cr, 'ruxchipher  ·  purple team in training', 14, 132, 12, col.muted, { shadow = true })
+
+    if focus then
+        local left = math.max(0, focus.duration - (os.time() - focus.start))
+        local top = 150
+        rgba(cr, col.cyan, 0.9)
+        U.rrect(cr, 12, top, 2, 44, 1)
+        cairo_fill(cr)
+        text(cr, '\u{F051B}  FOCUS MODE', 26, top + 16, 12, col.cyan, { bold = true, shadow = true })
+        text(cr, string.format('%02d:%02d left', left // 60, left % 60), 26 + 300, top + 16, 12, col.fg,
+            { align = 'right', shadow = true })
+        U.bar(cr, 26, top + 28, 300, 5, (1 - left / focus.duration) * 100, col.cyan, col.purple)
+        text(cr, 'notifications muted · Super+Alt+F to stop', 26, top + 50, 10, col.muted, { shadow = true })
+        return
+    end
 
     local tip = TIPS[(os.time() // 900) % #TIPS + 1]
     local lines = U.wrap(cr, tip, 13, 560)
@@ -181,11 +197,16 @@ local function draw_mission(cr)
 
     -- commit heatmap: last 28 days, oldest left
     local hy = y + 322
-    text(cr, 'lab commits · 28 days', x + 20, hy, 10, col.muted)
+    text(cr, 'lab commits + study · 28 days', x + 20, hy, 10, col.muted)
+    local mins = study[day_key(0)] or 0
+    if focus then mins = mins + (os.time() - focus.start) // 60 end
+    text(cr, string.format('study today %dh %02dm', mins // 60, mins % 60), x + PW - 20, hy, 10,
+        mins > 0 and col.cyan or col.muted, { align = 'right' })
     local gap, ch = 4, 12
     local cw = (PW - 40 + gap) / 14
     for i = 0, 27 do
-        local n = commits[day_key(27 - i)] or 0
+        local dk = day_key(27 - i)
+        local n = (commits[dk] or 0) + math.ceil((study[dk] or 0) / 30)
         local cx = x + 20 + (i % 14) * cw
         local cy = hy + 10 + (i // 14) * (ch + gap)
         U.rrect(cr, cx, cy, cw - gap, ch, 3)
@@ -206,7 +227,8 @@ local function draw_weather(cr)
     if weather.temp then
         local h = tonumber(os.date('%H'))
         local icon, ic = weather_icon(weather.code, h < 6 or h >= 19)
-        text(cr, icon, x + 20, y + 100, 52, ic)
+        -- the big icon itself is drawn (and animated) by the separate wx widget
+        local _ = icon
         local tw = text(cr, weather.temp .. '°', x + 96, y + 92, 44, col.fg, { bold = true })
         text(cr, weather.desc or '', x + 100 + tw, y + 74, 12, col.sub)
         text(cr, 'feels ' .. (weather.feels or '?') .. '°  ·  ' .. (weather.humidity or '?') .. '%', x + 100 + tw, y + 92, 11, col.muted)
@@ -279,6 +301,8 @@ function conky_main()
     if conky_window == nil then return end
     if tick % 30 == 0 then load_mission(); load_weather() end
     if tick % 300 == 0 then load_commits() end
+    if tick % 30 == 0 then load_study() end
+    load_focus()
     if tick % 1800 == 0 then fetch_weather() end
     tick = tick + 1
 

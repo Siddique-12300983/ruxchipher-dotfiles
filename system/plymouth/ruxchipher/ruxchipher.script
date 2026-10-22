@@ -1,0 +1,151 @@
+# ruxchipher boot splash (Plymouth script theme), Tokyo Night.
+
+W = Window.GetWidth();
+H = Window.GetHeight();
+Window.SetBackgroundTopColor(0.06, 0.06, 0.09);
+Window.SetBackgroundBottomColor(0.04, 0.04, 0.06);
+
+mode = Plymouth.GetMode();
+shutting_down = (mode == "shutdown" || mode == "reboot");
+
+# ---------------------------------------------------------------- background
+bg_img = Image("bg.png");
+bg = Sprite(bg_img.Scale(W, H));
+bg.SetZ(-100);
+
+# ---------------------------------------------------------------- logo
+logo_size = Math.Int(H * 0.22);
+logo_img = Image("shield.png").Scale(logo_size, logo_size);
+logo = Sprite(logo_img);
+logo_x = Math.Int((W - logo_size) / 2);
+logo_y = Math.Int(H * 0.40 - logo_size / 1.6);
+logo.SetPosition(logo_x, logo_y, 10);
+logo.SetOpacity(0);
+
+fun centered(file, y) {
+    img = Image(file);
+    s = Sprite(img);
+    s.SetPosition(Math.Int((W - img.GetWidth()) / 2), y, 10);
+    s.SetOpacity(0);
+    return s;
+}
+
+below = logo_y + logo_size + 18;
+
+if (shutting_down) {
+    bye = centered("bye.png", below);
+    bye_sub = centered("bye_sub.png", below + 58);
+} else {
+    name = centered("name.png", below);
+    codename = centered("codename.png", below + 66);
+    intro = centered("intro.png", below + 96);
+
+    # progress bar
+    bar_w = 420;
+    bar_x = Math.Int((W - bar_w) / 2);
+    bar_y = below + 146;
+    track = Sprite(Image("bar_track.png"));
+    track.SetPosition(bar_x, bar_y, 10);
+    track.SetOpacity(0);
+    fill_img = Image("bar_fill.png");
+    fill = Sprite();
+    fill.SetPosition(bar_x, bar_y, 11);
+
+    granted = centered("granted.png", bar_y + 22);
+
+    # boot log, bottom-left
+    for (i = 0; i < 5; i++) {
+        line[i] = Sprite(Image("line" + i + ".png"));
+        line[i].SetPosition(Math.Int(W * 0.04), Math.Int(H - H * 0.05 - (5 - i) * 26), 10);
+        line[i].SetOpacity(0);
+    }
+}
+
+# ---------------------------------------------------------------- animation
+frame = 0;
+progress = 0;
+shown = 0;
+
+fun fade(sprite, start, length) {
+    o = (global.frame - start) / length;
+    if (o < 0) o = 0;
+    if (o > 1) o = 1;
+    sprite.SetOpacity(o);
+}
+
+fun refresh() {
+    global.frame++;
+
+    # logo fades in, then breathes
+    if (global.frame < 40) logo.SetOpacity(global.frame / 40);
+    else logo.SetOpacity(0.86 + 0.14 * Math.Sin(global.frame / 22));
+
+    if (shutting_down) {
+        fade(bye, 15, 30);
+        fade(bye_sub, 30, 30);
+        return;
+    }
+
+    fade(name, 18, 30);
+    fade(codename, 32, 30);
+    fade(intro, 42, 30);
+    fade(track, 50, 20);
+
+    for (i = 0; i < 5; i++) fade(line[i], 60 + i * 28, 14);
+
+    # ease the bar toward real global.progress, never backwards
+    target = global.progress;
+    timed = (global.frame - 50) / 400;
+    if (timed > target) target = timed;
+    if (target > 1) target = 1;
+    if (target > global.shown) global.shown = global.shown + (target - global.shown) * 0.08;
+    if (global.frame > 50 && global.shown > 0.005) {
+        fill.SetImage(fill_img.Scale(Math.Int(bar_w * global.shown) + 1, 4));
+    }
+
+    if (global.shown > 0.85) fade(granted, global.granted_at, 25);
+    else global.granted_at = global.frame;
+}
+Plymouth.SetRefreshFunction(refresh);
+
+fun boot_progress(duration, p) {
+    global.progress = p;
+}
+Plymouth.SetBootProgressFunction(boot_progress);
+
+# ---------------------------------------------------------------- messages / password prompts
+msg_sprite = Sprite();
+msg_sprite.SetZ(20);
+
+fun show_message(text) {
+    img = Image.Text(text, 0.66, 0.69, 0.84, 1, "JetBrainsMono Nerd Font 12");
+    msg_sprite.SetImage(img);
+    msg_sprite.SetPosition(Math.Int((W - img.GetWidth()) / 2), Math.Int(H * 0.92), 20);
+}
+Plymouth.SetMessageFunction(show_message);
+
+prompt_sprite = Sprite();
+bullets_sprite = Sprite();
+
+fun display_password(prompt, bullets) {
+    p = Image.Text(prompt, 0.75, 0.79, 0.96, 1, "JetBrainsMono Nerd Font 13");
+    prompt_sprite.SetImage(p);
+    prompt_sprite.SetPosition(Math.Int((W - p.GetWidth()) / 2), Math.Int(H * 0.80), 30);
+    dots = "";
+    for (i = 0; i < bullets; i++) dots += "● ";
+    b = Image.Text(dots + "_", 0.49, 0.81, 1, 1, "JetBrainsMono Nerd Font 16");
+    bullets_sprite.SetImage(b);
+    bullets_sprite.SetPosition(Math.Int((W - b.GetWidth()) / 2), Math.Int(H * 0.80) + 34, 30);
+}
+Plymouth.SetDisplayPasswordFunction(display_password);
+
+fun display_normal() {
+    prompt_sprite.SetImage(Image.Text("", 0, 0, 0, 0));
+    bullets_sprite.SetImage(Image.Text("", 0, 0, 0, 0));
+}
+Plymouth.SetDisplayNormalFunction(display_normal);
+
+fun quit() {
+    if (!shutting_down) granted.SetOpacity(1);
+}
+Plymouth.SetQuitFunction(quit);

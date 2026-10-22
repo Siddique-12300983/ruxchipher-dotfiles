@@ -1,0 +1,31 @@
+/* ruxchipher: Tokyo Night colours for GTK4 / libadwaita apps (Files, Settings, Text Editor...). */
+:root {
+  --accent-bg-color: #7aa2f7;
+  --accent-fg-color: #1a1b26;
+  --accent-color: #7aa2f7;
+
+  --window-bg-color: #1a1b26;
+  --window-fg-color: #c0caf5;
+  --view-bg-color: #1f2335;
+  --view-fg-color: #c0caf5;
+  --headerbar-bg-color: #16161e;
+  --headerbar-fg-color: #c0caf5;
+  --headerbar-backdrop-color: #1a1b26;
+  --sidebar-bg-color: #16161e;
+  --sidebar-fg-color: #a9b1d6;
+  --sidebar-backdrop-color: #1a1b26;
+  --secondary-sidebar-bg-color: #1a1b26;
+  --secondary-sidebar-fg-color: #a9b1d6;
+  --card-bg-color: rgba(122, 162, 247, 0.06);
+  --card-fg-color: #c0caf5;
+  --dialog-bg-color: #1f2335;
+  --dialog-fg-color: #c0caf5;
+  --popover-bg-color: #1f2335;
+  --popover-fg-color: #c0caf5;
+  --thumbnail-bg-color: #24283b;
+
+  --destructive-bg-color: #f7768e;
+  --success-bg-color: #9ece6a;
+  --warning-bg-color: #e0af68;
+  --error-bg-color: #f7768e;
+}

@@ -1,0 +1,8 @@
+{
+  "HomepageLocation": "file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html",
+  "HomepageIsNewTabPage": false,
+  "ShowHomeButton": true,
+  "NewTabPageLocation": "file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html",
+  "RestoreOnStartup": 4,
+  "RestoreOnStartupURLs": ["file:///home/ruxchipher/.local/share/ruxchipher/startpage/index.html"]
+}

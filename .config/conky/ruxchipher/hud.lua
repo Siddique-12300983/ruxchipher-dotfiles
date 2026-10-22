@@ -83,6 +83,28 @@ local function pick_iface()
     if dev then iface = dev end
 end
 
+local SENT_LOG = os.getenv('HOME') .. '/.local/state/ruxchipher-sentinel/events.log'
+local sentinel = { armed = false, today = 0, title = nil, at = nil }
+
+local function poll_sentinel()
+    sentinel.armed = os.execute('systemctl --user -q is-active ruxchipher-sentinel') == true
+    sentinel.today, sentinel.title, sentinel.at = 0, nil, nil
+    local f = io.open(SENT_LOG, 'r')
+    if not f then return end
+    local today = os.date('%Y-%m-%d')
+    for line in f:lines() do
+        if line:sub(1, 10) == today then
+            sentinel.today = sentinel.today + 1
+            local y, mo, d, h, mi, se, title = line:match('^(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)%s+(.-)%s+|')
+            if y then
+                sentinel.title = title
+                sentinel.at = os.time({ year = y, month = mo, day = d, hour = h, min = mi, sec = se })
+            end
+        end
+    end
+    f:close()
+end
+
 local function push(t, v)
     t[#t + 1] = v
     if #t > N then table.remove(t, 1) end
@@ -238,15 +260,24 @@ local function graph(cr, x, y, w, h)
     series(hist_up, col.purple, 0.22)
 end
 
-local function draw(cr)
+local function draw(cr, tick)
+    local alert = sentinel.at and os.time() - sentinel.at < 600
+    local pulse = (math.sin(tick * math.pi / 2) + 1) / 2
+
     -- panel
     rrect(cr, 0.5, 0.5, W - 1, H - 1, 20)
     rgba(cr, col.bg)
     cairo_fill_preserve(cr)
-    with_pattern(cr, grad(0, 0, W, H, col.cyan, col.purple, 0.45), function()
-        cairo_set_line_width(cr, 1)
+    if alert then
+        rgba(cr, col.red, 0.45 + 0.45 * pulse)
+        cairo_set_line_width(cr, 2)
         cairo_stroke(cr)
-    end)
+    else
+        with_pattern(cr, grad(0, 0, W, H, col.cyan, col.purple, 0.45), function()
+            cairo_set_line_width(cr, 1)
+            cairo_stroke(cr)
+        end)
+    end
     local glow = cairo_pattern_create_radial(40, 40, 0, 40, 40, 260)
     cairo_pattern_add_color_stop_rgba(glow, 0, col.cyan[1], col.cyan[2], col.cyan[3], 0.08)
     cairo_pattern_add_color_stop_rgba(glow, 1, col.cyan[1], col.cyan[2], col.cyan[3], 0)
@@ -256,7 +287,7 @@ local function draw(cr)
     end)
 
     -- header
-    rgba(cr, col.green)
+    rgba(cr, alert and col.red or (sentinel.armed and col.green or col.orange))
     cairo_arc(cr, PAD + 4, 38, 4, 0, 2 * math.pi)
     cairo_fill(cr)
     text(cr, 'ruxchipher@arch', PAD + 16, 42, 12, col.sub)
@@ -314,7 +345,7 @@ local function draw(cr)
 
     -- processes
     section(cr, 'TOP PROCESSES', 658)
-    for i = 1, 4 do
+    for i = 1, 3 do
         local y = 662 + i * 22
         local name = (conky_parse('${top name ' .. i .. '}') or ''):gsub('^%s+', ''):gsub('%s+$', '')
         local pct = num('${top cpu ' .. i .. '}')
@@ -324,7 +355,26 @@ local function draw(cr)
         text(cr, string.format('%.1f%%', pct), W - PAD, y, 12, col.fg, { align = 'right' })
     end
 
-    text(cr, 'linux ' .. conky_parse('${kernel}'), W / 2, H - 20, 10, col.muted, { align = 'center' })
+    -- sentinel strip
+    local sy, sh = 746, 34
+    local sc = alert and col.red or (sentinel.armed and col.green or col.orange)
+    rrect(cr, PAD, sy, W - 2 * PAD, sh, 10)
+    rgba(cr, sc, alert and (0.10 + 0.10 * pulse) or 0.07)
+    cairo_fill_preserve(cr)
+    rgba(cr, sc, alert and 0.7 or 0.3)
+    cairo_set_line_width(cr, 1)
+    cairo_stroke(cr)
+    text(cr, '\u{F0483}', PAD + 12, sy + 23, 15, sc)
+    if alert then
+        local title = sentinel.title or 'alert'
+        if #title > 24 then title = title:sub(1, 23) .. '…' end
+        text(cr, title, PAD + 36, sy + 22, 12, col.red, { bold = true })
+        text(cr, os.date('%H:%M', sentinel.at), W - PAD - 12, sy + 22, 11, col.red, { align = 'right' })
+    else
+        text(cr, sentinel.armed and 'sentinel armed' or 'sentinel offline', PAD + 36, sy + 22, 12, sc, { bold = true })
+        text(cr, sentinel.today .. (sentinel.today == 1 and ' alert today ›' or ' alerts today ›'),
+            W - PAD - 12, sy + 22, 11, sentinel.today > 0 and col.orange or col.muted, { align = 'right' })
+    end
 end
 
 ---------------------------------------------------------------- entry
@@ -338,12 +388,26 @@ function conky_main()
     if tick == 0 then init() end
     if tick % 15 == 0 then poll_gpu() end
     if tick % 10 == 0 then pick_iface() end
+    if tick % 5 == 0 then poll_sentinel() end
     tick = tick + 1
 
     local cs = cairo_xlib_surface_create(conky_window.display, conky_window.drawable,
         conky_window.visual, conky_window.width, conky_window.height)
     local cr = cairo_create(cs)
-    draw(cr)
+    draw(cr, tick)
     cairo_destroy(cr)
     cairo_surface_destroy(cs)
+end
+
+-- Clicking the sentinel strip opens today's alert report.
+local last_click = 0
+
+function conky_mouse(event)
+    if event.type ~= 'button_down' then return false end
+    if event.button ~= 'left' and event.button ~= 1 then return false end
+    if event.x < PAD or event.x > W - PAD or event.y < 746 or event.y > 780 then return false end
+    if os.time() - last_click < 2 then return true end
+    last_click = os.time()
+    os.execute(os.getenv('HOME') .. '/.local/bin/sentinel-report --window >/dev/null 2>&1 &')
+    return true
 end

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=ruxchipher
+Description=ruxchipher boot splash: shield logo, name and boot log in Tokyo Night
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/ruxchipher
+ScriptFile=/usr/share/plymouth/themes/ruxchipher/ruxchipher.script

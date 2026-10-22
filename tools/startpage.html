@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ruxchipher · start</title>
+<link rel="icon" href="data:image/png;base64,{{LOGO}}">
+<style>
+  :root {
+    --bg: #1a1b26; --bg2: #16161e; --panel: rgba(36, 40, 59, 0.55); --line: rgba(122, 162, 247, 0.16);
+    --fg: #c0caf5; --sub: #a9b1d6; --muted: #565f89;
+    --cyan: #7dcfff; --blue: #7aa2f7; --purple: #bb9af7; --green: #9ece6a; --red: #f7768e;
+    --mono: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(ellipse 70% 60% at 20% 15%, rgba(125, 207, 255, 0.07), transparent 60%),
+                radial-gradient(ellipse 60% 60% at 90% 100%, rgba(187, 154, 247, 0.09), transparent 60%),
+                linear-gradient(160deg, var(--bg), var(--bg2));
+    color: var(--fg); font-family: var(--mono);
+    display: flex; align-items: center; justify-content: center; padding: 32px 16px;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(122, 162, 247, 0.035) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(122, 162, 247, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 100%);
+  }
+  main { width: min(860px, 100%); position: relative; animation: rise 0.7s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+
+  header { display: flex; align-items: center; gap: 22px; }
+  header img { width: 84px; height: 84px; filter: drop-shadow(0 0 18px rgba(125, 207, 255, 0.25)); }
+  .clock { font-size: clamp(48px, 9vw, 76px); font-weight: 200; line-height: 1; letter-spacing: -0.02em; }
+  .clock .s { font-size: 0.32em; color: var(--purple); margin-left: 4px; }
+  .hello { margin-top: 8px; color: var(--sub); font-size: 15px; }
+  .hello b {
+    background: linear-gradient(90deg, var(--cyan), var(--purple)); -webkit-background-clip: text; background-clip: text;
+    color: transparent; font-weight: 700;
+  }
+
+  form { margin-top: 34px; position: relative; }
+  form span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--purple); }
+  input {
+    width: 100%; font: inherit; font-size: 16px; color: var(--fg);
+    padding: 16px 18px 16px 42px; border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(22, 22, 30, 0.75); outline: none; transition: border-color .25s, box-shadow .25s;
+  }
+  input::placeholder { color: var(--muted); }
+  input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(125, 207, 255, 0.12); }
+
+  .grid { margin-top: 26px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .grid a {
+    text-decoration: none; color: var(--fg); padding: 14px 16px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;
+    transition: transform .25s cubic-bezier(.22, 1, .36, 1), border-color .25s, background .25s;
+  }
+  .grid a:hover, .grid a:focus-visible { transform: translateY(-3px); border-color: var(--c, var(--cyan)); background: rgba(36, 40, 59, 0.8); outline: none; }
+  .grid .t { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .grid .t::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--c, var(--cyan)); }
+  .grid .d { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .grid kbd { margin-left: auto; font: inherit; font-size: 10px; color: var(--muted); }
+  .label { margin-top: 28px; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); display: flex; align-items: center; gap: 12px; }
+  .label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .label + .grid { margin-top: 12px; }
+
+  .tip {
+    margin-top: 28px; padding: 14px 18px; border-left: 2px solid var(--purple); border-radius: 0 10px 10px 0;
+    background: rgba(187, 154, 247, 0.06); color: var(--sub); font-size: 13px; line-height: 1.6;
+  }
+  .tip b { color: var(--purple); font-weight: 500; }
+  footer { margin-top: 18px; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    header { gap: 14px; }
+    header img { width: 60px; height: 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) { main { animation: none; } .grid a { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="data:image/png;base64,{{LOGO}}" alt="ruxchipher shield logo">
+    <div>
+      <div class="clock" id="clock">--:--<span class="s">:--</span></div>
+      <div class="hello"><span id="greet">Hello</span>, <b>Siddique</b> · <span id="date"></span></div>
+    </div>
+  </header>
+
+  <form action="https://www.google.com/search" method="get" autocomplete="off">
+    <span>❯</span>
+    <input name="q" id="q" placeholder="search the web…   ( / to focus · type a link to open it )" autofocus>
+  </form>
+
+  <div class="label">MINE</div>
+  <div class="grid">
+    <a href="https://ruxchipher.com" style="--c:var(--cyan)"><span class="t">portfolio <kbd>1</kbd></span><span class="d">ruxchipher.com</span></a>
+    <a href="https://github.com/Siddique-12300983" style="--c:var(--fg)"><span class="t">github <kbd>2</kbd></span><span class="d">Siddique-12300983</span></a>
+    <a href="https://github.com/Siddique-12300983/purple-team-journey" style="--c:var(--purple)"><span class="t">lab notes <kbd>3</kbd></span><span class="d">purple-team-journey</span></a>
+    <a href="https://github.com/Siddique-12300983/ruxchipher-dotfiles" style="--c:var(--blue)"><span class="t">dotfiles <kbd>4</kbd></span><span class="d">ruxchipher-dotfiles</span></a>
+  </div>
+
+  <div class="label">TRAIN</div>
+  <div class="grid">
+    <a href="https://tryhackme.com" style="--c:var(--red)"><span class="t">tryhackme <kbd>5</kbd></span><span class="d">rooms & paths</span></a>
+    <a href="https://app.hackthebox.com" style="--c:var(--green)"><span class="t">hack the box <kbd>6</kbd></span><span class="d">labs & academy</span></a>
+    <a href="https://attack.mitre.org" style="--c:var(--red)"><span class="t">att&amp;ck <kbd>7</kbd></span><span class="d">MITRE techniques</span></a>
+    <a href="https://moodle.cqu.edu.au" style="--c:var(--cyan)"><span class="t">moodle <kbd>8</kbd></span><span class="d">CQUniversity</span></a>
+  </div>
+
+  <div class="label">DAILY</div>
+  <div class="grid">
+    <a href="https://mail.google.com" style="--c:var(--red)"><span class="t">gmail</span><span class="d">inbox</span></a>
+    <a href="https://www.linkedin.com/in/siddiqueabu/" style="--c:var(--blue)"><span class="t">linkedin</span><span class="d">siddiqueabu</span></a>
+    <a href="https://www.youtube.com" style="--c:var(--red)"><span class="t">youtube</span><span class="d">watch</span></a>
+    <a href="https://claude.ai" style="--c:var(--purple)"><span class="t">claude</span><span class="d">claude.ai</span></a>
+  </div>
+
+  <div class="tip"><b>// tip</b>&nbsp; <span id="tip"></span></div>
+  <footer><span>ruxchipher@arch · tokyo night</span><span>press 1–8 to jump</span></footer>
+</main>
+
+<script>
+  const TIPS = [
+    "Every attack you run in the lab should end with a detection you can show for it.",
+    "Event ID 4769 with ticket encryption 0x17 (RC4) is a classic Kerberoasting tell.",
+    "Snapshot the lab before every attack. Rolling back beats rebuilding.",
+    "Sysmon Event ID 1 (process creation) answers most \"what ran?\" questions.",
+    "Baseline normal first. You cannot spot weird without knowing boring.",
+    "Map every lab exercise to a MITRE ATT&CK technique.",
+    "Document as you go: future you is the first reader of your write-up.",
+    "Least privilege first. Detection is the backup plan, not the plan."
+  ];
+  const pad = n => String(n).padStart(2, "0");
+  function tick() {
+    const d = new Date(), h = d.getHours();
+    document.getElementById("clock").innerHTML = pad(h) + ":" + pad(d.getMinutes()) + '<span class="s">:' + pad(d.getSeconds()) + "</span>";
+    document.getElementById("greet").textContent = h < 5 ? "Burning the midnight oil" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    document.getElementById("date").textContent = d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
+  }
+  tick(); setInterval(tick, 1000);
+  document.getElementById("tip").textContent = TIPS[Math.floor(Date.now() / 900000) % TIPS.length];
+
+  const q = document.getElementById("q");
+  const links = [...document.querySelectorAll(".grid a")];
+  document.addEventListener("keydown", e => {
+    if (document.activeElement === q) return;
+    if (e.key === "/") { e.preventDefault(); q.focus(); }
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 8) location.href = links[n - 1].href;
+  });
+  document.querySelector("form").addEventListener("submit", e => {
+    const v = q.value.trim();
+    if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(v) && !v.includes(" ")) { e.preventDefault(); location.href = "https://" + v; }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+# ruxchipher setup guide
+
+A step-by-step guide to setting up the ruxchipher desktop on a fresh Arch Linux machine running GNOME.
+No prior terminal experience is needed. Copy each command exactly and press Enter.
+
+---
+
+## 0. Before you start
+
+You need:
+- Arch Linux with **GNOME** installed and working (logged in to a GNOME session on Wayland).
+- An internet connection.
+- Your user password (for `sudo`).
+
+Open a terminal: press **Super** (the Windows key), type `terminal`, and press Enter.
+
+## 1. Get the files
+
+```bash
+sudo pacman -S --needed git
+git clone https://github.com/Siddique-12300983/ruxchipher-dotfiles.git ~/ruxchipher-dotfiles
+cd ~/ruxchipher-dotfiles
+```
+
+## 2. Install the desktop (no system changes)
+
+```bash
+./install.sh --user
+```
+
+This installs the packages, then copies the widgets, scripts, terminal greeting, colours, icons and keyboard shortcuts.
+Paths are adjusted automatically if your username isn't `ruxchipher`.
+
+When it finishes, **log out and log back in**. You should see the widgets on the desktop and the new wallpaper.
+
+## 3. Install the system parts (optional)
+
+```bash
+./install.sh --system
+```
+
+This adds:
+- the **boot splash** (shield logo, your name, boot log, a goodbye screen on shutdown);
+- the **login screen** logo and banner;
+- the **browser start page** for Chrome and Firefox;
+- the **lid-hibernate fix** (only if hibernation is already set up).
+
+Every system file it changes is backed up with a `.pre-ruxchipher` suffix. For the boot splash, a backup boot entry
+(`arch-linux-backup.efi`) is created first, so you can always boot the old way: hold **Space** while the laptop
+starts to open the boot menu and pick the backup entry.
+
+Reboot to see the boot splash.
+
+## 4. Things to change for a different machine
+
+Most things work as they are. These depend on the hardware or your own setup:
+
+| What | Where | Why |
+|---|---|---|
+| Lab VM names | `~/.config/conky/ruxchipher/lab.lua` (the `VMS` table) and `~/.local/bin/lab-up`, `lab-down` | must match `virsh list --all` |
+| Battery name | `hud.lua` uses `BAT1`, the lid hook uses `ACAD` | check `ls /sys/class/power_supply/` |
+| CPU temperature | `hud.lua` reads the `k10temp` sensor (AMD) | Intel CPUs use `coretemp` |
+| GPU | `hud.lua` looks for an NVIDIA card | without one, the GPU ring shows "asleep" |
+| Fans | `hud.lua` reads the `asus` sensor | other laptops name it differently, or have none |
+| Weather city | `~/.config/conky/ruxchipher/weather.py` (`CITY`) | |
+| Mission goals | `~/.config/conky/ruxchipher/mission.txt` | change `[ ]` to `[x]` when done |
+| Wallpaper logo position | widgets are laid out around the Arch logo at the left | for a different screen size, regenerate with `tools/wallpaper.py` |
+
+After editing a widget file, restart the widgets by logging out and back in.
+
+## 5. Everyday use
+
+| Shortcut | What it does |
+|---|---|
+| **F12** | drop-down terminal |
+| **Super+V** | clipboard history |
+| **Super+Alt+L** | start the lab (DC01, then WIN11 and KALI) |
+| **Super+Alt+Shift+L** | shut the lab down gracefully |
+| **Super+Alt+F** | focus mode: 50-minute timer, notifications muted (press again to stop early) |
+| **Super+Alt+S** | sentinel alert report (also: click the sentinel strip on the HUD) |
+
+The weather icon animates when you hover over it, and for a few seconds every 10 minutes.
+
+Terminal commands:
+```bash
+focus-mode start 25          # a 25-minute session
+sentinel-report --all        # every alert ever logged
+systemctl --user status ruxchipher-sentinel
+```
+
+## 6. Undo
+
+- **Widgets:** delete `~/.config/autostart/ruxchipher-hud.desktop` and log out.
+- **Sentinel:** `systemctl --user disable --now ruxchipher-sentinel`
+- **Boot splash:** restore the backups, then rebuild:
+  ```bash
+  sudo cp /etc/mkinitcpio.conf.pre-ruxchipher /etc/mkinitcpio.conf
+  sudo cp /etc/kernel/cmdline.pre-ruxchipher /etc/kernel/cmdline
+  sudo cp /etc/mkinitcpio.d/linux.preset.pre-ruxchipher /etc/mkinitcpio.d/linux.preset
+  sudo mkinitcpio -P
+  ```
+- **Login screen:** `sudo rm /etc/dconf/db/gdm.d/01-ruxchipher && sudo dconf update`
+- **Browser start page:** `sudo rm /etc/opt/chrome/policies/managed/ruxchipher-startpage.json`, and restore
+  `/usr/lib/firefox/distribution/policies.json.pre-ruxchipher` if it exists.
+- **Lid hook:** `sudo rm /etc/systemd/system-sleep/lid-hibernate`
+
+## 7. Boot splash on GRUB
+
+The installer sets up the splash automatically only for **systemd-boot with a unified kernel image (UKI)** built by mkinitcpio.
+On GRUB:
+1. Add `plymouth` after `udev` in the `HOOKS=(...)` line of `/etc/mkinitcpio.conf`.
+2. Add `quiet splash` to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`.
+3. Run:
+   ```bash
+   sudo plymouth-set-default-theme ruxchipher
+   sudo mkinitcpio -P
+   sudo grub-mkconfig -o /boot/grub/grub.cfg
+   ```
+
+## 8. Regenerating the artwork
+
+The logo, boot-splash images and wallpaper are generated by Python scripts in `tools/`:
+```bash
+python -m venv /tmp/venv && /tmp/venv/bin/pip install numpy pillow
+/tmp/venv/bin/python tools/wallpaper.py ~/Pictures/Wallpapers/geology.png wallpaper.png   # needs the original Arch wallpaper for the logo
+/tmp/venv/bin/python tools/make_assets.py out/ wallpapers/ruxchipher-tokyonight.png
+```
+Edit the text in `make_assets.py` (name, intro line, boot log lines) to personalise the boot splash.
