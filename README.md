@@ -14,7 +14,7 @@ Portfolio: **[ruxchipher.com](https://ruxchipher.com)**
 |---|---|
 | ![HUD](screenshots/hud.png) | ![Greeting, mission tracker, weather and calendar](screenshots/left-panels.png) |
 
-| Lab VMs (preview data) | Now playing (preview data) | Sentinel alert (preview) |
+| Lab VMs (preview data) | Now playing, top centre (preview data) | Sentinel alert (preview) |
 |---|---|---|
 | ![Lab widget](screenshots/lab-widget.png) | ![Now playing widget](screenshots/now-playing.png) | ![Sentinel alert](screenshots/sentinel-alert.png) |
 
@@ -38,7 +38,8 @@ Transparent widgets drawn from scratch in **Lua + cairo** on Conky.
   Sydney **weather** and a calendar.
 - **`wx.lua`**: the weather icon, **animated** (turning sun, falling rain, lightning, snow), but only for 6 seconds after a click
   or for 4 seconds every 10 minutes. Otherwise it's a still image, to save battery.
-- **`media.lua`** (bottom left): now playing via `playerctl`. It fades out when nothing is playing.
+- **`media.lua`** (top centre): now playing via `playerctl`, drawn with no panel (feathered album art, light text,
+  a comet-style progress line) so it blends into the wallpaper. It fades in while something plays and fades out when the player closes.
 
 ![Weather icon animation frames](screenshots/weather-animation.png)
 
